@@ -1,3 +1,4 @@
+import { h } from "preact";
 import type { QuartzTransformerPlugin, CSSResource } from "@quartz-community/types";
 import type { FontSpecification, QuartzFontsOptions } from "./types";
 import { OBSIDIAN_SANS_STACK, OBSIDIAN_MONO_STACK } from "./defaults";
@@ -170,7 +171,7 @@ function buildUnlayeredCSS(fonts: ResolvedFonts): string {
   ].join("\n");
 }
 
-function buildGoogleFontsHead(options: QuartzFontsOptions): string[] {
+function buildGoogleFontsHead(options: QuartzFontsOptions): unknown[] {
   const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER;
   const bodySpec = options.body ?? QUARTZ_DEFAULT_BODY;
   const codeSpec = options.code ?? QUARTZ_DEFAULT_CODE;
@@ -183,9 +184,9 @@ function buildGoogleFontsHead(options: QuartzFontsOptions): string[] {
   });
 
   return [
-    '<link rel="preconnect" href="https://fonts.googleapis.com" />',
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
-    `<link rel="stylesheet" href="${href}" />`,
+    h("link", { rel: "preconnect", href: "https://fonts.googleapis.com" }),
+    h("link", { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" }),
+    h("link", { rel: "stylesheet", href }),
   ];
 }
 
@@ -211,7 +212,7 @@ export const QuartzFonts: QuartzTransformerPlugin<Partial<QuartzFontsOptions>> =
         { content: buildUnlayeredCSS(fonts), inline: true },
       ];
 
-      const additionalHead: string[] =
+      const additionalHead: unknown[] =
         options.fontOrigin === "googleFonts" ? buildGoogleFontsHead(options) : [];
 
       return { css, js: [], additionalHead };

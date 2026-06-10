@@ -140,7 +140,7 @@ describe("QuartzFonts", () => {
       expect(head).toHaveLength(0);
     });
 
-    it("injects preconnect and stylesheet link tags for googleFonts", () => {
+    it("injects preconnect and stylesheet VNodes for googleFonts", () => {
       const head = getAdditionalHead(
         QuartzFonts({
           fontOrigin: "googleFonts",
@@ -151,13 +151,20 @@ describe("QuartzFonts", () => {
       );
 
       expect(head).toHaveLength(3);
-      expect(head[0]).toContain("preconnect");
-      expect(head[0]).toContain("fonts.googleapis.com");
-      expect(head[1]).toContain("fonts.gstatic.com");
-      expect(head[2]).toContain("fonts.googleapis.com/css2");
-      expect(head[2]).toContain("Playfair");
-      expect(head[2]).toContain("Inter");
-      expect(head[2]).toContain("JetBrains");
+
+      const preconnect1 = head[0] as { props: Record<string, string> };
+      expect(preconnect1.props.rel).toBe("preconnect");
+      expect(preconnect1.props.href).toBe("https://fonts.googleapis.com");
+
+      const preconnect2 = head[1] as { props: Record<string, string> };
+      expect(preconnect2.props.href).toBe("https://fonts.gstatic.com");
+
+      const stylesheet = head[2] as { props: Record<string, string> };
+      expect(stylesheet.props.rel).toBe("stylesheet");
+      expect(stylesheet.props.href).toContain("fonts.googleapis.com/css2");
+      expect(stylesheet.props.href).toContain("Playfair");
+      expect(stylesheet.props.href).toContain("Inter");
+      expect(stylesheet.props.href).toContain("JetBrains");
     });
 
     it("includes title font in Google Fonts URL when different from header", () => {
@@ -171,9 +178,9 @@ describe("QuartzFonts", () => {
         }),
       );
 
-      const linkTag = head[2] as string;
-      expect(linkTag).toContain("Abril");
-      expect(linkTag).toContain("Playfair");
+      const stylesheet = head[2] as { props: Record<string, string> };
+      expect(stylesheet.props.href).toContain("Abril");
+      expect(stylesheet.props.href).toContain("Playfair");
     });
 
     it("deduplicates title and header when they match", () => {
@@ -187,8 +194,8 @@ describe("QuartzFonts", () => {
         }),
       );
 
-      const linkTag = head[2] as string;
-      const interMatches = linkTag.match(/family=Inter/g);
+      const stylesheet = head[2] as { props: { href: string } };
+      const interMatches = stylesheet.props.href.match(/family=Inter/g);
       expect(interMatches).toHaveLength(1);
     });
   });
