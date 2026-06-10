@@ -1,103 +1,126 @@
-import type { PluggableList, Plugin } from "unified";
-import type { Root as MdastRoot } from "mdast";
-import type { Root as HastRoot, Element } from "hast";
-import type { VFile } from "vfile";
-import remarkGfm from "remark-gfm";
-import rehypeSlug from "rehype-slug";
-import { findAndReplace } from "mdast-util-find-and-replace";
-import { visit } from "unist-util-visit";
-import type { QuartzTransformerPlugin, BuildCtx } from "@quartz-community/types";
-import type { ExampleTransformerOptions } from "./types";
+import type { QuartzTransformerPlugin, CSSResource } from "@quartz-community/types";
+import type { QuartzFontsOptions } from "./types";
+import { OBSIDIAN_SANS_STACK, OBSIDIAN_MONO_STACK } from "./defaults";
+import { readFontRegistry, isQuartzThemeEnabled } from "./util/registry";
 
-const defaultOptions: ExampleTransformerOptions = {
-  highlightToken: "==",
-  headingClass: "example-plugin-heading",
-  enableGfm: true,
-  addHeadingSlugs: true,
+const defaultOptions: QuartzFontsOptions = {
+  useThemeFonts: true,
 };
 
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+interface ResolvedFonts {
+  body: string;
+  header: string;
+  code: string;
+  interface: string;
+  h1: string;
+  h2: string;
+  h3: string;
+  h4: string;
+  h5: string;
+  h6: string;
+}
 
-const remarkHighlightToken = (token: string): Plugin<[], MdastRoot> => {
-  const escapedToken = escapeRegExp(token);
-  const pattern = new RegExp(`${escapedToken}([^\n]+?)${escapedToken}`, "g");
-  return () => (tree: MdastRoot, _file: VFile) => {
-    findAndReplace(tree, [
-      [
-        pattern,
-        (_match: string, value: string) => ({
-          type: "strong",
-          children: [{ type: "text", value }],
-        }),
-      ],
-    ]);
+function resolveFonts(options: QuartzFontsOptions): ResolvedFonts {
+  const registry = options.useThemeFonts !== false ? readFontRegistry() : undefined;
+
+  if (options.useThemeFonts !== false && !registry) {
+    if (isQuartzThemeEnabled()) {
+      console.warn(
+        "[QuartzFonts] QuartzTheme is enabled but its font registry is empty. " +
+          "Ensure QuartzTheme runs before QuartzFonts (lower defaultOrder number). " +
+          "Falling back to Obsidian defaults.",
+      );
+    }
+  }
+
+  const themeFonts = registry?.fonts ?? {};
+
+  const body = options.body ?? themeFonts["--font-text"] ?? OBSIDIAN_SANS_STACK;
+
+  const header = options.header ?? themeFonts["--font-text"] ?? OBSIDIAN_SANS_STACK;
+
+  const code = options.code ?? themeFonts["--font-monospace"] ?? OBSIDIAN_MONO_STACK;
+
+  const interfaceFont = options.interface ?? themeFonts["--font-interface"] ?? OBSIDIAN_SANS_STACK;
+
+  const resolveHeading = (level: 1 | 2 | 3 | 4 | 5 | 6): string => {
+    const levelKey = `h${level}` as keyof QuartzFontsOptions;
+    const themeVarKey = `--h${level}-font`;
+
+    return (
+      (options[levelKey] as string | undefined) ??
+      themeFonts[themeVarKey] ??
+      options.header ??
+      themeFonts["--font-text"] ??
+      header
+    );
   };
-};
 
-const rehypeHeadingClass = (className: string): Plugin<[], HastRoot> => {
-  return () => (tree: HastRoot, _file: VFile) => {
-    visit(tree, "element", (node: Element) => {
-      if (!/^h[1-6]$/.test(node.tagName)) {
-        return;
-      }
-
-      const existing = node.properties?.className;
-      const classes: string[] = Array.isArray(existing)
-        ? existing.filter((value): value is string => typeof value === "string")
-        : typeof existing === "string"
-          ? [existing]
-          : [];
-      node.properties = {
-        ...node.properties,
-        className: [...classes, className],
-      };
-    });
-  };
-};
-
-/**
- * Example transformer showing remark/rehype usage and resource injection.
- */
-export const ExampleTransformer: QuartzTransformerPlugin<Partial<ExampleTransformerOptions>> = (
-  userOptions?: Partial<ExampleTransformerOptions>,
-) => {
-  const options = { ...defaultOptions, ...userOptions };
   return {
-    name: "ExampleTransformer",
-    textTransform(_ctx: BuildCtx, src: string) {
-      return src.endsWith("\n") ? src : `${src}\n`;
+    body,
+    header,
+    code,
+    interface: interfaceFont,
+    h1: resolveHeading(1),
+    h2: resolveHeading(2),
+    h3: resolveHeading(3),
+    h4: resolveHeading(4),
+    h5: resolveHeading(5),
+    h6: resolveHeading(6),
+  };
+}
+
+function buildLayeredCSS(fonts: ResolvedFonts): string {
+  return [
+    "@layer quartz-fonts {",
+    "  :root {",
+    `    --bodyFont: ${fonts.body};`,
+    `    --headerFont: ${fonts.header};`,
+    `    --codeFont: ${fonts.code};`,
+    `    --font-text: ${fonts.body};`,
+    `    --font-interface: ${fonts.interface};`,
+    `    --font-monospace: ${fonts.code};`,
+    `    --h1-font: ${fonts.h1};`,
+    `    --h2-font: ${fonts.h2};`,
+    `    --h3-font: ${fonts.h3};`,
+    `    --h4-font: ${fonts.h4};`,
+    `    --h5-font: ${fonts.h5};`,
+    `    --h6-font: ${fonts.h6};`,
+    "  }",
+    "}",
+  ].join("\n");
+}
+
+function buildUnlayeredCSS(fonts: ResolvedFonts): string {
+  return [
+    `h1 { font-family: ${fonts.h1}; }`,
+    `h2 { font-family: ${fonts.h2}; }`,
+    `h3 { font-family: ${fonts.h3}; }`,
+    `h4 { font-family: ${fonts.h4}; }`,
+    `h5 { font-family: ${fonts.h5}; }`,
+    `h6 { font-family: ${fonts.h6}; }`,
+  ].join("\n");
+}
+
+export const QuartzFonts: QuartzTransformerPlugin<Partial<QuartzFontsOptions>> = (
+  userOptions?: Partial<QuartzFontsOptions>,
+) => {
+  const options: QuartzFontsOptions = { ...defaultOptions, ...userOptions };
+
+  return {
+    name: "QuartzFonts",
+    textTransform(_ctx, src) {
+      return src;
     },
-    markdownPlugins(): PluggableList {
-      const plugins: PluggableList = [remarkHighlightToken(options.highlightToken)];
-      if (options.enableGfm) {
-        plugins.unshift(remarkGfm);
-      }
-      return plugins;
-    },
-    htmlPlugins(): PluggableList {
-      const plugins: PluggableList = [rehypeHeadingClass(options.headingClass)];
-      if (options.addHeadingSlugs) {
-        plugins.unshift(rehypeSlug);
-      }
-      return plugins;
-    },
-    externalResources() {
-      return {
-        css: [
-          {
-            content: `.${options.headingClass} { letter-spacing: 0.02em; }`,
-            inline: true,
-          },
-        ],
-        js: [
-          {
-            contentType: "inline",
-            loadTime: "afterDOMReady",
-            script: "document.documentElement.dataset.exampleTransformer = 'true'",
-          },
-        ],
-        additionalHead: [],
-      };
+    externalResources(_ctx) {
+      const fonts = resolveFonts(options);
+
+      const css: CSSResource[] = [
+        { content: buildLayeredCSS(fonts), inline: true },
+        { content: buildUnlayeredCSS(fonts), inline: true },
+      ];
+
+      return { css, js: [], additionalHead: [] };
     },
   };
 };

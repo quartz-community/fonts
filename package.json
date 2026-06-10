@@ -1,23 +1,21 @@
 {
-  "name": "@quartz-community/plugin-template",
+  "name": "@quartz-community/quartz-fonts",
   "version": "0.1.0",
-  "description": "Template repository for Quartz community plugins.",
+  "description": "Fine-grained font control for Quartz sites. Supports per-heading fonts, theme font discovery, and Obsidian-compatible defaults.",
   "type": "module",
   "license": "MIT",
   "author": "Quartz Community",
   "homepage": "https://quartz.jzhao.xyz",
   "repository": {
     "type": "git",
-    "url": "https://github.com/quartz-community/plugin-template"
+    "url": "https://github.com/quartz-community/quartz-fonts"
   },
   "keywords": [
     "quartz",
     "quartz-plugin",
-    "plugin-template",
-    "remark",
-    "rehype",
-    "mdast",
-    "hast"
+    "fonts",
+    "typography",
+    "obsidian"
   ],
   "files": [
     "dist",
@@ -33,10 +31,6 @@
     "./types": {
       "types": "./dist/types.d.ts",
       "import": "./dist/types.js"
-    },
-    "./components": {
-      "types": "./dist/components/index.d.ts",
-      "import": "./dist/components/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -78,46 +72,60 @@
     "eslint-config-prettier": "^9.1.0",
     "github-slugger": "^2.0.0",
     "hast-util-to-jsx-runtime": "^2.3.6",
-    "mdast-util-find-and-replace": "^3.0.2",
     "preact": "^10.28.2",
     "prettier": "^3.6.2",
-    "rehype-slug": "^6.0.0",
-    "remark-gfm": "^4.0.1",
-    "remark-parse": "^11.0.0",
-    "remark-stringify": "^11.0.0",
     "sass": "^1.97.3",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "unified": "^11.0.5",
-    "unist-util-visit": "^5.1.0",
     "vfile": "^6.0.3",
     "vitest": "^2.1.9"
   },
   "quartz": {
-    "name": "plugin-template",
-    "displayName": "Plugin Template",
+    "name": "quartz-fonts",
+    "displayName": "Quartz Fonts",
     "category": "transformer",
     "version": "1.0.0",
     "quartzVersion": ">=5.0.0",
     "dependencies": [],
-    "defaultOrder": 50,
+    "defaultOrder": 60,
     "defaultEnabled": true,
-    "defaultOptions": {},
-    "optionSchema": {
-      "highlightToken": {
-        "type": "enum",
-        "values": [
-          "==",
-          "**",
-          "~~"
-        ]
-      }
+    "defaultOptions": {
+      "useThemeFonts": true
     },
-    "components": {
-      "ExampleComponent": {
-        "displayName": "Example Component",
-        "defaultPosition": "right",
-        "defaultPriority": 50
+    "optionSchema": {
+      "body": {
+        "type": "string"
+      },
+      "header": {
+        "type": "string"
+      },
+      "code": {
+        "type": "string"
+      },
+      "interface": {
+        "type": "string"
+      },
+      "h1": {
+        "type": "string"
+      },
+      "h2": {
+        "type": "string"
+      },
+      "h3": {
+        "type": "string"
+      },
+      "h4": {
+        "type": "string"
+      },
+      "h5": {
+        "type": "string"
+      },
+      "h6": {
+        "type": "string"
+      },
+      "useThemeFonts": {
+        "type": "boolean"
       }
     }
   },
