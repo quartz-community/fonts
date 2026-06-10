@@ -16,33 +16,48 @@ plugins:
     enabled: true
 ```
 
-For advanced use cases, you can override in TypeScript:
+With custom fonts:
 
-```ts title="quartz.ts (override)"
-import * as ExternalPlugin from "./.quartz/plugins";
-
-ExternalPlugin.QuartzFonts({
-  body: '"Inter", sans-serif',
-  header: '"Playfair Display", serif',
-  code: '"JetBrains Mono", monospace',
-});
+```yaml title="quartz.config.yaml"
+plugins:
+  - source: github:quartz-community/quartz-fonts
+    enabled: true
+    options:
+      body: '"Inter", sans-serif'
+      header: '"Playfair Display", serif'
+      code: '"JetBrains Mono", monospace'
 ```
 
 ## Configuration
 
-| Option          | Type      | Default          | Description                                                  |
-| --------------- | --------- | ---------------- | ------------------------------------------------------------ |
-| `body`          | `string`  | Obsidian default | Font family for body text.                                   |
-| `header`        | `string`  | Obsidian default | Default font family for all headings (h1-h6).                |
-| `code`          | `string`  | Obsidian default | Font family for code and monospace elements.                 |
-| `interface`     | `string`  | Obsidian default | Font family for UI elements.                                 |
-| `h1`            | `string`  | `header` value   | Font family for h1 headings.                                 |
-| `h2`            | `string`  | `header` value   | Font family for h2 headings.                                 |
-| `h3`            | `string`  | `header` value   | Font family for h3 headings.                                 |
-| `h4`            | `string`  | `header` value   | Font family for h4 headings.                                 |
-| `h5`            | `string`  | `header` value   | Font family for h5 headings.                                 |
-| `h6`            | `string`  | `header` value   | Font family for h6 headings.                                 |
-| `useThemeFonts` | `boolean` | `true`           | Use fonts from QuartzTheme as defaults when it is installed. |
+Font options accept either a CSS font-family string or an object with Google Fonts loading control:
+
+```yaml
+# String form
+body: '"Inter", sans-serif'
+
+# Object form (for Google Fonts weight/italic control)
+body:
+  name: Inter
+  weights: [400, 600, 700]
+  includeItalic: true
+```
+
+| Option          | Type                | Default          | Description                                                               |
+| --------------- | ------------------- | ---------------- | ------------------------------------------------------------------------- |
+| `title`         | `FontSpecification` | `header` value   | Font family for the site title.                                           |
+| `body`          | `FontSpecification` | Obsidian default | Font family for body text.                                                |
+| `header`        | `FontSpecification` | Obsidian default | Default font family for all headings (h1-h6).                             |
+| `code`          | `FontSpecification` | Obsidian default | Font family for code and monospace elements.                              |
+| `interface`     | `FontSpecification` | Obsidian default | Font family for UI elements.                                              |
+| `h1`            | `FontSpecification` | `header` value   | Font family for h1 headings.                                              |
+| `h2`            | `FontSpecification` | `header` value   | Font family for h2 headings.                                              |
+| `h3`            | `FontSpecification` | `header` value   | Font family for h3 headings.                                              |
+| `h4`            | `FontSpecification` | `header` value   | Font family for h4 headings.                                              |
+| `h5`            | `FontSpecification` | `header` value   | Font family for h5 headings.                                              |
+| `h6`            | `FontSpecification` | `header` value   | Font family for h6 headings.                                              |
+| `useThemeFonts` | `boolean`           | `true`           | Use fonts from QuartzTheme as defaults when it is installed.              |
+| `fontOrigin`    | `string`            | `"local"`        | `"googleFonts"` to auto-load from Google Fonts, `"local"` for no loading. |
 
 ### Default options
 
@@ -51,6 +66,7 @@ ExternalPlugin.QuartzFonts({
   enabled: true
   options:
     useThemeFonts: true
+    fontOrigin: local
 ```
 
 ## How it works
@@ -67,6 +83,12 @@ For individual headings, the resolution is:
 
 ```
 h1 option -> header option -> theme --h1-font -> theme font -> Obsidian default
+```
+
+For the site title:
+
+```
+title option -> header option -> theme font -> Obsidian default
 ```
 
 ### With QuartzTheme
@@ -102,6 +124,41 @@ QuartzFonts works standalone. Without a theme, it falls back to Obsidian's defau
     h1: '"Playfair Display", serif'
     h2: '"Lora", serif'
 
+# Load from Google Fonts automatically
+- source: github:quartz-community/quartz-fonts
+  enabled: true
+  options:
+    fontOrigin: googleFonts
+    body: Inter
+    header: Playfair Display
+    code: JetBrains Mono
+
+# Google Fonts with weight/italic control
+- source: github:quartz-community/quartz-fonts
+  enabled: true
+  options:
+    fontOrigin: googleFonts
+    body:
+      name: Inter
+      weights: [400, 600, 700]
+      includeItalic: true
+    header:
+      name: Playfair Display
+      weights: [400, 700]
+    code:
+      name: JetBrains Mono
+      weights: [400]
+
+# Custom title font (separate from header)
+- source: github:quartz-community/quartz-fonts
+  enabled: true
+  options:
+    fontOrigin: googleFonts
+    title: Abril Fatface
+    header: Playfair Display
+    body: Inter
+    code: JetBrains Mono
+
 # Ignore theme fonts entirely
 - source: github:quartz-community/quartz-fonts
   enabled: true
@@ -109,6 +166,22 @@ QuartzFonts works standalone. Without a theme, it falls back to Obsidian's defau
     useThemeFonts: false
     body: '"Inter", sans-serif'
 ```
+
+## Google Fonts Validation
+
+When `fontOrigin: googleFonts` is set and the optional [`google-font-metadata`](https://www.npmjs.com/package/google-font-metadata) package is installed, QuartzFonts validates your font configuration at build time:
+
+- Checks that font family names exist in Google Fonts.
+- Warns if requested weights are not available for a font.
+- Warns if italic is requested but the font doesn't support it.
+
+Install it to enable validation:
+
+```bash
+npm install google-font-metadata
+```
+
+Validation warnings are logged to the console but do not block the build.
 
 ## Documentation
 

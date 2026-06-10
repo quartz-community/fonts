@@ -84,6 +84,7 @@ const SINGLETON_EXTERNALS = [
   "vfile",
   "vfile/*",
   "unified",
+  "google-font-metadata",
 ];
 
 export default defineConfig({

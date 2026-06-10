@@ -7,18 +7,38 @@ export type {
   StaticResources,
 } from "@quartz-community/types";
 
+/**
+ * A font can be specified as a plain CSS font-family string
+ * or as an object with Google Fonts loading control.
+ */
+export type FontSpecification =
+  | string
+  | {
+      name: string;
+      weights?: number[];
+      includeItalic?: boolean;
+    };
+
 export interface QuartzFontsOptions {
-  body?: string;
-  header?: string;
-  code?: string;
-  interface?: string;
-  h1?: string;
-  h2?: string;
-  h3?: string;
-  h4?: string;
-  h5?: string;
-  h6?: string;
+  title?: FontSpecification;
+  body?: FontSpecification;
+  header?: FontSpecification;
+  code?: FontSpecification;
+  interface?: FontSpecification;
+  h1?: FontSpecification;
+  h2?: FontSpecification;
+  h3?: FontSpecification;
+  h4?: FontSpecification;
+  h5?: FontSpecification;
+  h6?: FontSpecification;
   useThemeFonts?: boolean;
+  /**
+   * Where to load fonts from.
+   * - `"googleFonts"`: generate Google Fonts `<link>` tags.
+   * - `"local"`: assume fonts are available locally (no loading).
+   * Defaults to `"local"` (no automatic font loading).
+   */
+  fontOrigin?: "googleFonts" | "local";
 }
 
 export interface QuartzFontRegistry {

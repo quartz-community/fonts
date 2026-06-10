@@ -2,6 +2,8 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import type { BuildCtx } from "@quartz-community/types";
 import { QuartzFonts } from "../src/transformer";
 import { OBSIDIAN_SANS_STACK, OBSIDIAN_MONO_STACK } from "../src/defaults";
+import { formatFontSpecification, googleFontHref, getFontName } from "../src/util/google-fonts";
+import { validateFontSpec } from "../src/util/validate";
 
 const REGISTRY_KEY = "__quartzFonts";
 const mockCtx = {} as BuildCtx;
@@ -17,6 +19,11 @@ function clearRegistry() {
 function getCSSContent(plugin: ReturnType<typeof QuartzFonts>): string {
   const resources = plugin.externalResources!(mockCtx);
   return (resources?.css ?? []).map((r) => ("content" in r ? r.content : "")).join("\n");
+}
+
+function getAdditionalHead(plugin: ReturnType<typeof QuartzFonts>): unknown[] {
+  const resources = plugin.externalResources!(mockCtx);
+  return (resources as { additionalHead?: unknown[] })?.additionalHead ?? [];
 }
 
 describe("QuartzFonts", () => {
@@ -74,6 +81,118 @@ describe("QuartzFonts", () => {
     });
   });
 
+  describe("title font", () => {
+    it("defaults title to header value", () => {
+      const css = getCSSContent(QuartzFonts({ header: '"Lora", serif' }));
+      expect(css).toContain('--titleFont: "Lora", serif');
+    });
+
+    it("defaults title to Obsidian sans stack when no header set", () => {
+      const css = getCSSContent(QuartzFonts());
+      expect(css).toContain(`--titleFont: ${OBSIDIAN_SANS_STACK}`);
+    });
+
+    it("applies explicit title font", () => {
+      const css = getCSSContent(
+        QuartzFonts({ title: '"Abril Fatface", serif', header: '"Lora", serif' }),
+      );
+      expect(css).toContain('--titleFont: "Abril Fatface", serif');
+      expect(css).toContain('--headerFont: "Lora", serif');
+    });
+
+    it("accepts FontSpecification object for title", () => {
+      const css = getCSSContent(QuartzFonts({ title: { name: "Abril Fatface", weights: [400] } }));
+      expect(css).toContain("--titleFont: Abril Fatface");
+    });
+  });
+
+  describe("FontSpecification object form", () => {
+    it("extracts font name from object spec for CSS", () => {
+      const css = getCSSContent(
+        QuartzFonts({
+          body: { name: "Inter", weights: [400, 700], includeItalic: true },
+          header: { name: "Playfair Display", weights: [400, 700] },
+          code: { name: "JetBrains Mono", weights: [400] },
+        }),
+      );
+
+      expect(css).toContain("--bodyFont: Inter");
+      expect(css).toContain("--headerFont: Playfair Display");
+      expect(css).toContain("--codeFont: JetBrains Mono");
+    });
+
+    it("accepts object form for heading overrides", () => {
+      const css = getCSSContent(
+        QuartzFonts({
+          h1: { name: "Abril Fatface", weights: [400] },
+          h2: '"Lora", serif',
+        }),
+      );
+
+      expect(css).toContain("--h1-font: Abril Fatface");
+      expect(css).toContain('--h2-font: "Lora", serif');
+    });
+  });
+
+  describe("Google Fonts loading", () => {
+    it("does not inject link tags when fontOrigin is local (default)", () => {
+      const head = getAdditionalHead(QuartzFonts({ body: "Inter" }));
+      expect(head).toHaveLength(0);
+    });
+
+    it("injects preconnect and stylesheet link tags for googleFonts", () => {
+      const head = getAdditionalHead(
+        QuartzFonts({
+          fontOrigin: "googleFonts",
+          body: "Inter",
+          header: "Playfair Display",
+          code: "JetBrains Mono",
+        }),
+      );
+
+      expect(head).toHaveLength(3);
+      expect(head[0]).toContain("preconnect");
+      expect(head[0]).toContain("fonts.googleapis.com");
+      expect(head[1]).toContain("fonts.gstatic.com");
+      expect(head[2]).toContain("fonts.googleapis.com/css2");
+      expect(head[2]).toContain("Playfair");
+      expect(head[2]).toContain("Inter");
+      expect(head[2]).toContain("JetBrains");
+    });
+
+    it("includes title font in Google Fonts URL when different from header", () => {
+      const head = getAdditionalHead(
+        QuartzFonts({
+          fontOrigin: "googleFonts",
+          title: "Abril Fatface",
+          header: "Playfair Display",
+          body: "Inter",
+          code: "JetBrains Mono",
+        }),
+      );
+
+      const linkTag = head[2] as string;
+      expect(linkTag).toContain("Abril");
+      expect(linkTag).toContain("Playfair");
+    });
+
+    it("deduplicates title and header when they match", () => {
+      const head = getAdditionalHead(
+        QuartzFonts({
+          fontOrigin: "googleFonts",
+          title: "Inter",
+          header: "Inter",
+          body: "Inter",
+          code: "JetBrains Mono",
+        }),
+      );
+
+      const linkTag = head[2] as string;
+      const interMatches = linkTag.match(/family=Inter/g);
+      expect(interMatches).toHaveLength(1);
+    });
+  });
+
   describe("with QuartzTheme registry", () => {
     beforeEach(() => {
       setRegistry({
@@ -121,5 +240,136 @@ describe("QuartzFonts", () => {
       const result = plugin.textTransform!(mockCtx, input);
       expect(result).toBe(input);
     });
+  });
+});
+
+describe("formatFontSpecification", () => {
+  it("formats string spec with default header weights", () => {
+    const result = formatFontSpecification("header", "Inter");
+    expect(result).toBe("Inter:wght@400;700");
+  });
+
+  it("formats string spec with default body weights and italic", () => {
+    const result = formatFontSpecification("body", "Inter");
+    expect(result).toBe("Inter:ital,wght@0,400;0,600;1,400;1,600");
+  });
+
+  it("formats string spec with default code weights", () => {
+    const result = formatFontSpecification("code", "JetBrains Mono");
+    expect(result).toBe("JetBrains Mono:wght@400;600");
+  });
+
+  it("uses custom weights from object spec", () => {
+    const result = formatFontSpecification("header", {
+      name: "Inter",
+      weights: [300, 400, 700, 900],
+    });
+    expect(result).toBe("Inter:wght@300;400;700;900");
+  });
+
+  it("includes italic axis when includeItalic is true", () => {
+    const result = formatFontSpecification("header", {
+      name: "Inter",
+      weights: [400, 700],
+      includeItalic: true,
+    });
+    expect(result).toBe("Inter:ital,wght@0,400;0,700;1,400;1,700");
+  });
+
+  it("returns bare name for single weight without italic", () => {
+    const result = formatFontSpecification("header", {
+      name: "Abril Fatface",
+      weights: [400],
+      includeItalic: false,
+    });
+    expect(result).toBe("Abril Fatface");
+  });
+});
+
+describe("googleFontHref", () => {
+  it("generates valid Google Fonts CSS2 URL", () => {
+    const href = googleFontHref({
+      header: "Playfair Display",
+      body: "Inter",
+      code: "JetBrains Mono",
+    });
+
+    expect(href).toContain("https://fonts.googleapis.com/css2?");
+    expect(href).toContain("display=swap");
+    expect(href).toContain("Playfair");
+    expect(href).toContain("Inter");
+    expect(href).toContain("JetBrains");
+  });
+
+  it("deduplicates identical font families", () => {
+    const href = googleFontHref({
+      header: "Inter",
+      body: "Inter",
+      code: "JetBrains Mono",
+    });
+
+    const interMatches = href.match(/family=Inter/g);
+    expect(interMatches).toHaveLength(1);
+  });
+
+  it("includes title font when different from header", () => {
+    const href = googleFontHref({
+      title: "Abril Fatface",
+      header: "Inter",
+      body: "Inter",
+      code: "JetBrains Mono",
+    });
+
+    expect(href).toContain("Abril");
+  });
+
+  it("excludes title font when same as header", () => {
+    const href = googleFontHref({
+      title: "Inter",
+      header: "Inter",
+      body: "Inter",
+      code: "JetBrains Mono",
+    });
+
+    const interMatches = href.match(/family=Inter/g);
+    expect(interMatches).toHaveLength(1);
+  });
+});
+
+describe("getFontName", () => {
+  it("returns string as-is", () => {
+    expect(getFontName('"Inter", sans-serif')).toBe('"Inter", sans-serif');
+  });
+
+  it("extracts name from object spec", () => {
+    expect(getFontName({ name: "Inter", weights: [400] })).toBe("Inter");
+  });
+});
+
+describe("validateFontSpec", () => {
+  it("warns for unrecognized font family", () => {
+    const warnings = validateFontSpec("body", "NotARealFont12345", "body");
+    if (warnings.length > 0) {
+      expect(warnings[0]!.message).toContain("not a recognized Google Font");
+    }
+  });
+
+  it("warns for unsupported weight", () => {
+    const warnings = validateFontSpec("body", { name: "Inter", weights: [150] }, "body");
+    if (warnings.length > 0) {
+      const weightWarning = warnings.find((w) => w.message.includes("weight 150"));
+      expect(weightWarning).toBeDefined();
+    }
+  });
+
+  it("returns no warnings for valid font and weights", () => {
+    const warnings = validateFontSpec("body", { name: "Inter", weights: [400, 700] }, "body");
+    const invalidWeightWarnings = warnings.filter((w) => w.message.includes("weight"));
+    expect(invalidWeightWarnings).toHaveLength(0);
+  });
+
+  it("returns empty array when metadata is not available", () => {
+    const warnings = validateFontSpec("body", "Inter", "body");
+    expect(Array.isArray(warnings)).toBe(true);
   });
 });

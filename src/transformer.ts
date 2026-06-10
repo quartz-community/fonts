@@ -1,13 +1,22 @@
 import type { QuartzTransformerPlugin, CSSResource } from "@quartz-community/types";
-import type { QuartzFontsOptions } from "./types";
+import type { FontSpecification, QuartzFontsOptions } from "./types";
 import { OBSIDIAN_SANS_STACK, OBSIDIAN_MONO_STACK } from "./defaults";
 import { readFontRegistry, isQuartzThemeEnabled } from "./util/registry";
+import { googleFontHref } from "./util/google-fonts";
+import { validateFontSpec } from "./util/validate";
 
 const defaultOptions: QuartzFontsOptions = {
   useThemeFonts: true,
+  fontOrigin: "local",
 };
 
+function toFontFamily(spec: FontSpecification): string {
+  if (typeof spec === "string") return spec;
+  return spec.name;
+}
+
 interface ResolvedFonts {
+  title: string;
   body: string;
   header: string;
   code: string;
@@ -35,28 +44,41 @@ function resolveFonts(options: QuartzFontsOptions): ResolvedFonts {
 
   const themeFonts = registry?.fonts ?? {};
 
-  const body = options.body ?? themeFonts["--font-text"] ?? OBSIDIAN_SANS_STACK;
+  const resolve = (
+    spec: FontSpecification | undefined,
+    ...fallbacks: (string | undefined)[]
+  ): string => {
+    if (spec !== undefined) return toFontFamily(spec);
+    for (const fb of fallbacks) {
+      if (fb !== undefined) return fb;
+    }
+    return OBSIDIAN_SANS_STACK;
+  };
 
-  const header = options.header ?? themeFonts["--font-text"] ?? OBSIDIAN_SANS_STACK;
-
-  const code = options.code ?? themeFonts["--font-monospace"] ?? OBSIDIAN_MONO_STACK;
-
-  const interfaceFont = options.interface ?? themeFonts["--font-interface"] ?? OBSIDIAN_SANS_STACK;
+  const body = resolve(options.body, themeFonts["--font-text"], OBSIDIAN_SANS_STACK);
+  const header = resolve(options.header, themeFonts["--font-text"], OBSIDIAN_SANS_STACK);
+  const code = resolve(options.code, themeFonts["--font-monospace"], OBSIDIAN_MONO_STACK);
+  const interfaceFont = resolve(
+    options.interface,
+    themeFonts["--font-interface"],
+    OBSIDIAN_SANS_STACK,
+  );
+  const title = resolve(options.title, undefined, header);
 
   const resolveHeading = (level: 1 | 2 | 3 | 4 | 5 | 6): string => {
     const levelKey = `h${level}` as keyof QuartzFontsOptions;
     const themeVarKey = `--h${level}-font`;
+    const userSpec = options[levelKey] as FontSpecification | undefined;
 
-    return (
-      (options[levelKey] as string | undefined) ??
-      themeFonts[themeVarKey] ??
-      options.header ??
-      themeFonts["--font-text"] ??
-      header
-    );
+    if (userSpec !== undefined) return toFontFamily(userSpec);
+    if (themeFonts[themeVarKey]) return themeFonts[themeVarKey];
+    if (options.header !== undefined) return toFontFamily(options.header);
+    if (themeFonts["--font-text"]) return themeFonts["--font-text"];
+    return header;
   };
 
   return {
+    title,
     body,
     header,
     code,
@@ -70,10 +92,37 @@ function resolveFonts(options: QuartzFontsOptions): ResolvedFonts {
   };
 }
 
+function runValidation(options: QuartzFontsOptions): void {
+  const specs: Array<{
+    role: string;
+    spec: FontSpecification;
+    fontRole: "title" | "header" | "body" | "code";
+  }> = [];
+
+  if (options.title) specs.push({ role: "title", spec: options.title, fontRole: "title" });
+  if (options.header) specs.push({ role: "header", spec: options.header, fontRole: "header" });
+  if (options.body) specs.push({ role: "body", spec: options.body, fontRole: "body" });
+  if (options.code) specs.push({ role: "code", spec: options.code, fontRole: "code" });
+
+  const headingLevels = ["h1", "h2", "h3", "h4", "h5", "h6"] as const;
+  for (const level of headingLevels) {
+    const spec = options[level];
+    if (spec) specs.push({ role: level, spec, fontRole: "header" });
+  }
+
+  for (const { role, spec, fontRole } of specs) {
+    const warnings = validateFontSpec(role, spec, fontRole);
+    for (const w of warnings) {
+      console.warn(`[QuartzFonts] ${w.role}: ${w.message}`);
+    }
+  }
+}
+
 function buildLayeredCSS(fonts: ResolvedFonts): string {
   return [
     "@layer quartz-fonts {",
     "  :root {",
+    `    --titleFont: ${fonts.title};`,
     `    --bodyFont: ${fonts.body};`,
     `    --headerFont: ${fonts.header};`,
     `    --codeFont: ${fonts.code};`,
@@ -102,10 +151,33 @@ function buildUnlayeredCSS(fonts: ResolvedFonts): string {
   ].join("\n");
 }
 
+function buildGoogleFontsHead(options: QuartzFontsOptions): string[] {
+  const headerSpec = options.header ?? "Inter";
+  const bodySpec = options.body ?? "Inter";
+  const codeSpec = options.code ?? "JetBrains Mono";
+
+  const href = googleFontHref({
+    title: options.title,
+    header: headerSpec,
+    body: bodySpec,
+    code: codeSpec,
+  });
+
+  return [
+    '<link rel="preconnect" href="https://fonts.googleapis.com" />',
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />',
+    `<link rel="stylesheet" href="${href}" />`,
+  ];
+}
+
 export const QuartzFonts: QuartzTransformerPlugin<Partial<QuartzFontsOptions>> = (
   userOptions?: Partial<QuartzFontsOptions>,
 ) => {
   const options: QuartzFontsOptions = { ...defaultOptions, ...userOptions };
+
+  if (options.fontOrigin === "googleFonts") {
+    runValidation(options);
+  }
 
   return {
     name: "QuartzFonts",
@@ -120,7 +192,10 @@ export const QuartzFonts: QuartzTransformerPlugin<Partial<QuartzFontsOptions>> =
         { content: buildUnlayeredCSS(fonts), inline: true },
       ];
 
-      return { css, js: [], additionalHead: [] };
+      const additionalHead: string[] =
+        options.fontOrigin === "googleFonts" ? buildGoogleFontsHead(options) : [];
+
+      return { css, js: [], additionalHead };
     },
   };
 };
