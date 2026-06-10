@@ -1,9 +1,9 @@
-export { QuartzFonts } from "./transformer";
-export { QuartzFontsEmitter } from "./emitter";
+export { Fonts } from "./transformer";
+export { FontsEmitter } from "./emitter";
 
 export type {
   FontSpecification,
-  QuartzFontsOptions,
+  FontsOptions,
   QuartzFontRegistry,
   FontFileEntry,
   ProcessedFontResult,

@@ -9,7 +9,7 @@ type FontSpecification = string | {
     weights?: number[];
     includeItalic?: boolean;
 };
-interface QuartzFontsOptions {
+interface FontsOptions {
     title?: FontSpecification;
     body?: FontSpecification;
     header?: FontSpecification;
@@ -55,4 +55,4 @@ interface FontFileEntry {
     unicodeRange?: string | null;
 }
 
-export type { FontFileEntry, FontSpecification, GoogleFontFile, ProcessedFontResult, QuartzFontRegistry, QuartzFontsOptions };
+export type { FontFileEntry, FontSpecification, FontsOptions, GoogleFontFile, ProcessedFontResult, QuartzFontRegistry };

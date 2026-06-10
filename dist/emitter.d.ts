@@ -1,6 +1,6 @@
 import { QuartzEmitterPlugin } from '@quartz-community/types';
-import { QuartzFontsOptions } from './types.js';
+import { FontsOptions } from './types.js';
 
-declare const QuartzFontsEmitter: QuartzEmitterPlugin<Partial<QuartzFontsOptions>>;
+declare const FontsEmitter: QuartzEmitterPlugin<Partial<FontsOptions>>;
 
-export { QuartzFontsEmitter };
+export { FontsEmitter };

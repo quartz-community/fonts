@@ -177,7 +177,7 @@ function resolveFonts(options) {
   if (options.useThemeFonts !== false && !registry) {
     if (isQuartzThemeEnabled()) {
       console.warn(
-        "[QuartzFonts] QuartzTheme is enabled but its font registry is empty. Ensure QuartzTheme runs before QuartzFonts (lower defaultOrder number). Falling back to Obsidian defaults."
+        "[Fonts] QuartzTheme is enabled but its font registry is empty. Ensure QuartzTheme runs before Fonts (lower defaultOrder number). Falling back to Obsidian defaults."
       );
     }
   }
@@ -251,7 +251,7 @@ function runValidation(options) {
   for (const { role, spec, fontRole } of specs) {
     const warnings = validateFontSpec(role, spec, fontRole);
     for (const w2 of warnings) {
-      console.warn(`[QuartzFonts] ${w2.role}: ${w2.message}`);
+      console.warn(`[Fonts] ${w2.role}: ${w2.message}`);
     }
   }
 }
@@ -302,13 +302,13 @@ function buildGoogleFontsHead(options) {
     _("link", { rel: "stylesheet", href })
   ];
 }
-var QuartzFonts = (userOptions) => {
+var Fonts = (userOptions) => {
   const options = { ...defaultOptions, ...userOptions };
   if (options.fontOrigin === "googleFonts") {
     runValidation(options);
   }
   return {
-    name: "QuartzFonts",
+    name: "Fonts",
     textTransform(_ctx, src) {
       return src;
     },
@@ -359,17 +359,17 @@ var defaultOptions2 = {
   useThemeFonts: true,
   fontOrigin: "googleFonts"
 };
-var QuartzFontsEmitter = (userOptions) => {
+var FontsEmitter = (userOptions) => {
   const options = { ...defaultOptions2, ...userOptions };
   return {
-    name: "QuartzFontsEmitter",
+    name: "FontsEmitter",
     async *emit(ctx, _content, _resources) {
       if (options.fontOrigin !== "selfHosted") {
         return;
       }
       const baseUrl = ctx.cfg.configuration.baseUrl;
       if (!baseUrl) {
-        throw new Error("[QuartzFontsEmitter] baseUrl is required for selfHosted fonts.");
+        throw new Error("[FontsEmitter] baseUrl is required for selfHosted fonts.");
       }
       const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER2;
       const bodySpec = options.body ?? QUARTZ_DEFAULT_BODY2;
@@ -383,7 +383,7 @@ var QuartzFontsEmitter = (userOptions) => {
       const cssResponse = await fetch(href);
       if (!cssResponse.ok) {
         throw new Error(
-          `[QuartzFontsEmitter] Failed to fetch Google Fonts CSS: ${cssResponse.status} ${cssResponse.statusText}`
+          `[FontsEmitter] Failed to fetch Google Fonts CSS: ${cssResponse.status} ${cssResponse.statusText}`
         );
       }
       const cssText = await cssResponse.text();
@@ -394,7 +394,7 @@ var QuartzFontsEmitter = (userOptions) => {
         const fontResponse = await fetch(fontFile.url);
         if (!fontResponse.ok) {
           throw new Error(
-            `[QuartzFontsEmitter] Failed to fetch font file: ${fontFile.url} (${fontResponse.status} ${fontResponse.statusText})`
+            `[FontsEmitter] Failed to fetch font file: ${fontFile.url} (${fontResponse.status} ${fontResponse.statusText})`
           );
         }
         const buf = await fontResponse.arrayBuffer();
@@ -409,6 +409,6 @@ var QuartzFontsEmitter = (userOptions) => {
   };
 };
 
-export { QuartzFonts, QuartzFontsEmitter };
+export { Fonts, FontsEmitter };
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

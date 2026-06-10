@@ -1,6 +1,6 @@
 import { h } from "preact";
 import type { QuartzTransformerPlugin, CSSResource } from "@quartz-community/types";
-import type { FontSpecification, QuartzFontsOptions } from "./types";
+import type { FontSpecification, FontsOptions } from "./types";
 import { OBSIDIAN_SANS_STACK, OBSIDIAN_MONO_STACK } from "./defaults";
 import { readFontRegistry, isQuartzThemeEnabled } from "./util/registry";
 import { googleFontHref } from "./util/google-fonts";
@@ -10,7 +10,7 @@ const QUARTZ_DEFAULT_HEADER = "Schibsted Grotesk";
 const QUARTZ_DEFAULT_BODY = "Source Sans Pro";
 const QUARTZ_DEFAULT_CODE = "IBM Plex Mono";
 
-const defaultOptions: QuartzFontsOptions = {
+const defaultOptions: FontsOptions = {
   useThemeFonts: true,
   fontOrigin: "googleFonts",
 };
@@ -34,14 +34,14 @@ interface ResolvedFonts {
   h6: string;
 }
 
-function resolveFonts(options: QuartzFontsOptions): ResolvedFonts {
+function resolveFonts(options: FontsOptions): ResolvedFonts {
   const registry = options.useThemeFonts !== false ? readFontRegistry() : undefined;
 
   if (options.useThemeFonts !== false && !registry) {
     if (isQuartzThemeEnabled()) {
       console.warn(
-        "[QuartzFonts] QuartzTheme is enabled but its font registry is empty. " +
-          "Ensure QuartzTheme runs before QuartzFonts (lower defaultOrder number). " +
+        "[Fonts] QuartzTheme is enabled but its font registry is empty. " +
+          "Ensure QuartzTheme runs before Fonts (lower defaultOrder number). " +
           "Falling back to Obsidian defaults.",
       );
     }
@@ -86,7 +86,7 @@ function resolveFonts(options: QuartzFontsOptions): ResolvedFonts {
   const title = resolve(options.title, undefined, header);
 
   const resolveHeading = (level: 1 | 2 | 3 | 4 | 5 | 6): string => {
-    const levelKey = `h${level}` as keyof QuartzFontsOptions;
+    const levelKey = `h${level}` as keyof FontsOptions;
     const themeVarKey = `--h${level}-font`;
     const userSpec = options[levelKey] as FontSpecification | undefined;
 
@@ -112,7 +112,7 @@ function resolveFonts(options: QuartzFontsOptions): ResolvedFonts {
   };
 }
 
-function runValidation(options: QuartzFontsOptions): void {
+function runValidation(options: FontsOptions): void {
   const specs: Array<{
     role: string;
     spec: FontSpecification;
@@ -133,7 +133,7 @@ function runValidation(options: QuartzFontsOptions): void {
   for (const { role, spec, fontRole } of specs) {
     const warnings = validateFontSpec(role, spec, fontRole);
     for (const w of warnings) {
-      console.warn(`[QuartzFonts] ${w.role}: ${w.message}`);
+      console.warn(`[Fonts] ${w.role}: ${w.message}`);
     }
   }
 }
@@ -171,7 +171,7 @@ function buildUnlayeredCSS(fonts: ResolvedFonts): string {
   ].join("\n");
 }
 
-function buildGoogleFontsHead(options: QuartzFontsOptions): unknown[] {
+function buildGoogleFontsHead(options: FontsOptions): unknown[] {
   const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER;
   const bodySpec = options.body ?? QUARTZ_DEFAULT_BODY;
   const codeSpec = options.code ?? QUARTZ_DEFAULT_CODE;
@@ -190,17 +190,17 @@ function buildGoogleFontsHead(options: QuartzFontsOptions): unknown[] {
   ];
 }
 
-export const QuartzFonts: QuartzTransformerPlugin<Partial<QuartzFontsOptions>> = (
-  userOptions?: Partial<QuartzFontsOptions>,
+export const Fonts: QuartzTransformerPlugin<Partial<FontsOptions>> = (
+  userOptions?: Partial<FontsOptions>,
 ) => {
-  const options: QuartzFontsOptions = { ...defaultOptions, ...userOptions };
+  const options: FontsOptions = { ...defaultOptions, ...userOptions };
 
   if (options.fontOrigin === "googleFonts") {
     runValidation(options);
   }
 
   return {
-    name: "QuartzFonts",
+    name: "Fonts",
     textTransform(_ctx, src) {
       return src;
     },

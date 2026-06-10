@@ -1,9 +1,9 @@
 import { QuartzTransformerPlugin } from '@quartz-community/types';
 export { QuartzEmitterPlugin, QuartzTransformerPlugin } from '@quartz-community/types';
-import { QuartzFontsOptions } from './types.js';
+import { FontsOptions } from './types.js';
 export { FontFileEntry, FontSpecification, GoogleFontFile, ProcessedFontResult, QuartzFontRegistry } from './types.js';
-export { QuartzFontsEmitter } from './emitter.js';
+export { FontsEmitter } from './emitter.js';
 
-declare const QuartzFonts: QuartzTransformerPlugin<Partial<QuartzFontsOptions>>;
+declare const Fonts: QuartzTransformerPlugin<Partial<FontsOptions>>;
 
-export { QuartzFonts, QuartzFontsOptions };
+export { Fonts, FontsOptions };

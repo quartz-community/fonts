@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { QuartzEmitterPlugin, BuildCtx, FilePath } from "@quartz-community/types";
-import type { QuartzFontsOptions } from "./types";
+import type { FontsOptions } from "./types";
 import { googleFontHref } from "./util/google-fonts";
 import { processGoogleFonts } from "./util/process-fonts";
 
@@ -9,18 +9,18 @@ const QUARTZ_DEFAULT_HEADER = "Schibsted Grotesk";
 const QUARTZ_DEFAULT_BODY = "Source Sans Pro";
 const QUARTZ_DEFAULT_CODE = "IBM Plex Mono";
 
-const defaultOptions: QuartzFontsOptions = {
+const defaultOptions: FontsOptions = {
   useThemeFonts: true,
   fontOrigin: "googleFonts",
 };
 
-export const QuartzFontsEmitter: QuartzEmitterPlugin<Partial<QuartzFontsOptions>> = (
-  userOptions?: Partial<QuartzFontsOptions>,
+export const FontsEmitter: QuartzEmitterPlugin<Partial<FontsOptions>> = (
+  userOptions?: Partial<FontsOptions>,
 ) => {
-  const options: QuartzFontsOptions = { ...defaultOptions, ...userOptions };
+  const options: FontsOptions = { ...defaultOptions, ...userOptions };
 
   return {
-    name: "QuartzFontsEmitter",
+    name: "FontsEmitter",
     async *emit(ctx: BuildCtx, _content: unknown[], _resources: unknown): AsyncGenerator<FilePath> {
       if (options.fontOrigin !== "selfHosted") {
         return;
@@ -28,7 +28,7 @@ export const QuartzFontsEmitter: QuartzEmitterPlugin<Partial<QuartzFontsOptions>
 
       const baseUrl = ctx.cfg.configuration.baseUrl;
       if (!baseUrl) {
-        throw new Error("[QuartzFontsEmitter] baseUrl is required for selfHosted fonts.");
+        throw new Error("[FontsEmitter] baseUrl is required for selfHosted fonts.");
       }
 
       const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER;
@@ -45,7 +45,7 @@ export const QuartzFontsEmitter: QuartzEmitterPlugin<Partial<QuartzFontsOptions>
       const cssResponse = await fetch(href);
       if (!cssResponse.ok) {
         throw new Error(
-          `[QuartzFontsEmitter] Failed to fetch Google Fonts CSS: ${cssResponse.status} ${cssResponse.statusText}`,
+          `[FontsEmitter] Failed to fetch Google Fonts CSS: ${cssResponse.status} ${cssResponse.statusText}`,
         );
       }
       const cssText = await cssResponse.text();
@@ -59,7 +59,7 @@ export const QuartzFontsEmitter: QuartzEmitterPlugin<Partial<QuartzFontsOptions>
         const fontResponse = await fetch(fontFile.url);
         if (!fontResponse.ok) {
           throw new Error(
-            `[QuartzFontsEmitter] Failed to fetch font file: ${fontFile.url} (${fontResponse.status} ${fontResponse.statusText})`,
+            `[FontsEmitter] Failed to fetch font file: ${fontFile.url} (${fontResponse.status} ${fontResponse.statusText})`,
           );
         }
         const buf = await fontResponse.arrayBuffer();

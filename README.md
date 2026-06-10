@@ -1,18 +1,18 @@
-# @quartz-community/quartz-fonts
+# @quartz-community/fonts
 
 Fine-grained font control for Quartz sites. Supports per-heading fonts, automatic theme font discovery via [QuartzTheme](https://github.com/saberzero1/quartz-themes), and Obsidian-compatible defaults.
 
 ## Installation
 
 ```bash
-npx quartz plugin add github:quartz-community/quartz-fonts
+npx quartz plugin add github:quartz-community/fonts
 ```
 
 ## Usage
 
 ```yaml title="quartz.config.yaml"
 plugins:
-  - source: github:quartz-community/quartz-fonts
+  - source: github:quartz-community/fonts
     enabled: true
 ```
 
@@ -20,7 +20,7 @@ With custom fonts:
 
 ```yaml title="quartz.config.yaml"
 plugins:
-  - source: github:quartz-community/quartz-fonts
+  - source: github:quartz-community/fonts
     enabled: true
     options:
       body: '"Inter", sans-serif'
@@ -62,7 +62,7 @@ body:
 ### Default options
 
 ```yaml title="quartz.config.yaml"
-- source: github:quartz-community/quartz-fonts
+- source: github:quartz-community/fonts
   enabled: true
   options:
     useThemeFonts: true
@@ -71,7 +71,7 @@ body:
 
 ## How it works
 
-QuartzFonts resolves fonts using a priority chain:
+Fonts resolves fonts using a priority chain:
 
 ```
 User config (plugin options)
@@ -93,29 +93,29 @@ title option -> header option -> theme font -> Obsidian default
 
 ### With QuartzTheme
 
-When [QuartzTheme](https://github.com/saberzero1/quartz-themes) is installed and runs before QuartzFonts, theme fonts are automatically discovered and used as defaults. Any options you set in QuartzFonts will override the theme fonts.
+When [QuartzTheme](https://github.com/saberzero1/quartz-themes) is installed and runs before Fonts, theme fonts are automatically discovered and used as defaults. Any options you set in Fonts will override the theme fonts.
 
-QuartzFonts must run after QuartzTheme. This is handled automatically by `defaultOrder` (QuartzTheme = 50, QuartzFonts = 60).
+Fonts must run after QuartzTheme. This is handled automatically by `defaultOrder` (QuartzTheme = 50, Fonts = 60).
 
 ### Without QuartzTheme
 
-QuartzFonts works standalone. Without a theme, it falls back to Obsidian's default system font stacks.
+Fonts works standalone. Without a theme, it falls back to Obsidian's default system font stacks.
 
 ## Examples
 
 ```yaml title="quartz.config.yaml"
 # Use theme fonts automatically (default behavior)
-- source: github:quartz-community/quartz-fonts
+- source: github:quartz-community/fonts
   enabled: true
 
 # Override just the heading font
-- source: github:quartz-community/quartz-fonts
+- source: github:quartz-community/fonts
   enabled: true
   options:
     header: '"Playfair Display", serif'
 
 # Full control with per-heading fonts
-- source: github:quartz-community/quartz-fonts
+- source: github:quartz-community/fonts
   enabled: true
   options:
     body: '"Inter", sans-serif'
@@ -125,7 +125,7 @@ QuartzFonts works standalone. Without a theme, it falls back to Obsidian's defau
     h2: '"Lora", serif'
 
 # Load from Google Fonts automatically
-- source: github:quartz-community/quartz-fonts
+- source: github:quartz-community/fonts
   enabled: true
   options:
     fontOrigin: googleFonts
@@ -134,7 +134,7 @@ QuartzFonts works standalone. Without a theme, it falls back to Obsidian's defau
     code: JetBrains Mono
 
 # Google Fonts with weight/italic control
-- source: github:quartz-community/quartz-fonts
+- source: github:quartz-community/fonts
   enabled: true
   options:
     fontOrigin: googleFonts
@@ -150,7 +150,7 @@ QuartzFonts works standalone. Without a theme, it falls back to Obsidian's defau
       weights: [400]
 
 # Custom title font (separate from header)
-- source: github:quartz-community/quartz-fonts
+- source: github:quartz-community/fonts
   enabled: true
   options:
     fontOrigin: googleFonts
@@ -160,7 +160,7 @@ QuartzFonts works standalone. Without a theme, it falls back to Obsidian's defau
     code: JetBrains Mono
 
 # Ignore theme fonts entirely
-- source: github:quartz-community/quartz-fonts
+- source: github:quartz-community/fonts
   enabled: true
   options:
     useThemeFonts: false
@@ -169,7 +169,7 @@ QuartzFonts works standalone. Without a theme, it falls back to Obsidian's defau
 
 ## Google Fonts Validation
 
-When `fontOrigin: googleFonts` is set and the optional [`google-font-metadata`](https://www.npmjs.com/package/google-font-metadata) package is installed, QuartzFonts validates your font configuration at build time:
+When `fontOrigin: googleFonts` is set and the optional [`google-font-metadata`](https://www.npmjs.com/package/google-font-metadata) package is installed, Fonts validates your font configuration at build time:
 
 - Checks that font family names exist in Google Fonts.
 - Warns if requested weights are not available for a font.
@@ -185,7 +185,7 @@ Validation warnings are logged to the console but do not block the build.
 
 ## Documentation
 
-See the [Quartz documentation](https://quartz.jzhao.xyz/plugins/QuartzFonts) for more information.
+See the [Quartz documentation](https://quartz.jzhao.xyz/plugins/Fonts) for more information.
 
 ## License
 

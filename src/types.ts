@@ -19,7 +19,7 @@ export type FontSpecification =
       includeItalic?: boolean;
     };
 
-export interface QuartzFontsOptions {
+export interface FontsOptions {
   title?: FontSpecification;
   body?: FontSpecification;
   header?: FontSpecification;

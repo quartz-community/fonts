@@ -92,17 +92,17 @@ var defaultOptions = {
   useThemeFonts: true,
   fontOrigin: "googleFonts"
 };
-var QuartzFontsEmitter = (userOptions) => {
+var FontsEmitter = (userOptions) => {
   const options = { ...defaultOptions, ...userOptions };
   return {
-    name: "QuartzFontsEmitter",
+    name: "FontsEmitter",
     async *emit(ctx, _content, _resources) {
       if (options.fontOrigin !== "selfHosted") {
         return;
       }
       const baseUrl = ctx.cfg.configuration.baseUrl;
       if (!baseUrl) {
-        throw new Error("[QuartzFontsEmitter] baseUrl is required for selfHosted fonts.");
+        throw new Error("[FontsEmitter] baseUrl is required for selfHosted fonts.");
       }
       const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER;
       const bodySpec = options.body ?? QUARTZ_DEFAULT_BODY;
@@ -116,7 +116,7 @@ var QuartzFontsEmitter = (userOptions) => {
       const cssResponse = await fetch(href);
       if (!cssResponse.ok) {
         throw new Error(
-          `[QuartzFontsEmitter] Failed to fetch Google Fonts CSS: ${cssResponse.status} ${cssResponse.statusText}`
+          `[FontsEmitter] Failed to fetch Google Fonts CSS: ${cssResponse.status} ${cssResponse.statusText}`
         );
       }
       const cssText = await cssResponse.text();
@@ -127,7 +127,7 @@ var QuartzFontsEmitter = (userOptions) => {
         const fontResponse = await fetch(fontFile.url);
         if (!fontResponse.ok) {
           throw new Error(
-            `[QuartzFontsEmitter] Failed to fetch font file: ${fontFile.url} (${fontResponse.status} ${fontResponse.statusText})`
+            `[FontsEmitter] Failed to fetch font file: ${fontFile.url} (${fontResponse.status} ${fontResponse.statusText})`
           );
         }
         const buf = await fontResponse.arrayBuffer();
@@ -142,6 +142,6 @@ var QuartzFontsEmitter = (userOptions) => {
   };
 };
 
-export { QuartzFontsEmitter };
+export { FontsEmitter };
 //# sourceMappingURL=emitter.js.map
 //# sourceMappingURL=emitter.js.map

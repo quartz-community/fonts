@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import type { BuildCtx } from "@quartz-community/types";
-import { QuartzFonts } from "../src/transformer";
+import { Fonts } from "../src/transformer";
 
 import { formatFontSpecification, googleFontHref, getFontName } from "../src/util/google-fonts";
 import { processGoogleFonts } from "../src/util/process-fonts";
@@ -17,24 +17,24 @@ function clearRegistry() {
   delete (globalThis as Record<string, unknown>)[REGISTRY_KEY];
 }
 
-function getCSSContent(plugin: ReturnType<typeof QuartzFonts>): string {
+function getCSSContent(plugin: ReturnType<typeof Fonts>): string {
   const resources = plugin.externalResources!(mockCtx);
   return (resources?.css ?? []).map((r) => ("content" in r ? r.content : "")).join("\n");
 }
 
-function getAdditionalHead(plugin: ReturnType<typeof QuartzFonts>): unknown[] {
+function getAdditionalHead(plugin: ReturnType<typeof Fonts>): unknown[] {
   const resources = plugin.externalResources!(mockCtx);
   return (resources as { additionalHead?: unknown[] })?.additionalHead ?? [];
 }
 
-describe("QuartzFonts", () => {
+describe("Fonts", () => {
   afterEach(() => {
     clearRegistry();
   });
 
   describe("standalone (no QuartzTheme)", () => {
     it("uses Quartz defaults when no options provided", () => {
-      const css = getCSSContent(QuartzFonts());
+      const css = getCSSContent(Fonts());
 
       expect(css).toContain("--bodyFont: Source Sans Pro");
       expect(css).toContain("--codeFont: IBM Plex Mono");
@@ -42,14 +42,14 @@ describe("QuartzFonts", () => {
     });
 
     it("applies user-provided body font", () => {
-      const css = getCSSContent(QuartzFonts({ body: '"Inter", sans-serif' }));
+      const css = getCSSContent(Fonts({ body: '"Inter", sans-serif' }));
 
       expect(css).toContain('--bodyFont: "Inter", sans-serif');
       expect(css).toContain('--font-text: "Inter", sans-serif');
     });
 
     it("applies user-provided header font to all headings", () => {
-      const css = getCSSContent(QuartzFonts({ header: '"Playfair Display", serif' }));
+      const css = getCSSContent(Fonts({ header: '"Playfair Display", serif' }));
 
       expect(css).toContain('--h1-font: "Playfair Display", serif');
       expect(css).toContain('--h6-font: "Playfair Display", serif');
@@ -57,7 +57,7 @@ describe("QuartzFonts", () => {
 
     it("applies per-heading overrides", () => {
       const css = getCSSContent(
-        QuartzFonts({
+        Fonts({
           header: '"Lora", serif',
           h1: '"Playfair Display", serif',
           h3: '"Inter", sans-serif',
@@ -70,7 +70,7 @@ describe("QuartzFonts", () => {
     });
 
     it("emits unlayered heading CSS", () => {
-      const plugin = QuartzFonts({ header: '"Lora", serif' });
+      const plugin = Fonts({ header: '"Lora", serif' });
       const resources = plugin.externalResources!(mockCtx);
       const unlayeredCSS = (resources?.css ?? [])
         .map((r) => ("content" in r ? r.content : ""))
@@ -84,25 +84,25 @@ describe("QuartzFonts", () => {
 
   describe("title font", () => {
     it("defaults title to header value", () => {
-      const css = getCSSContent(QuartzFonts({ header: '"Lora", serif' }));
+      const css = getCSSContent(Fonts({ header: '"Lora", serif' }));
       expect(css).toContain('--titleFont: "Lora", serif');
     });
 
     it("defaults title to header default when no header set", () => {
-      const css = getCSSContent(QuartzFonts());
+      const css = getCSSContent(Fonts());
       expect(css).toContain("--titleFont: Schibsted Grotesk");
     });
 
     it("applies explicit title font", () => {
       const css = getCSSContent(
-        QuartzFonts({ title: '"Abril Fatface", serif', header: '"Lora", serif' }),
+        Fonts({ title: '"Abril Fatface", serif', header: '"Lora", serif' }),
       );
       expect(css).toContain('--titleFont: "Abril Fatface", serif');
       expect(css).toContain('--headerFont: "Lora", serif');
     });
 
     it("accepts FontSpecification object for title", () => {
-      const css = getCSSContent(QuartzFonts({ title: { name: "Abril Fatface", weights: [400] } }));
+      const css = getCSSContent(Fonts({ title: { name: "Abril Fatface", weights: [400] } }));
       expect(css).toContain("--titleFont: Abril Fatface");
     });
   });
@@ -110,7 +110,7 @@ describe("QuartzFonts", () => {
   describe("FontSpecification object form", () => {
     it("extracts font name from object spec for CSS", () => {
       const css = getCSSContent(
-        QuartzFonts({
+        Fonts({
           body: { name: "Inter", weights: [400, 700], includeItalic: true },
           header: { name: "Playfair Display", weights: [400, 700] },
           code: { name: "JetBrains Mono", weights: [400] },
@@ -124,7 +124,7 @@ describe("QuartzFonts", () => {
 
     it("accepts object form for heading overrides", () => {
       const css = getCSSContent(
-        QuartzFonts({
+        Fonts({
           h1: { name: "Abril Fatface", weights: [400] },
           h2: '"Lora", serif',
         }),
@@ -137,13 +137,13 @@ describe("QuartzFonts", () => {
 
   describe("Google Fonts loading", () => {
     it("does not inject link tags when fontOrigin is local", () => {
-      const head = getAdditionalHead(QuartzFonts({ fontOrigin: "local", body: "Inter" }));
+      const head = getAdditionalHead(Fonts({ fontOrigin: "local", body: "Inter" }));
       expect(head).toHaveLength(0);
     });
 
     it("injects preconnect and stylesheet VNodes for googleFonts", () => {
       const head = getAdditionalHead(
-        QuartzFonts({
+        Fonts({
           fontOrigin: "googleFonts",
           body: "Inter",
           header: "Playfair Display",
@@ -170,7 +170,7 @@ describe("QuartzFonts", () => {
 
     it("includes title font in Google Fonts URL when different from header", () => {
       const head = getAdditionalHead(
-        QuartzFonts({
+        Fonts({
           fontOrigin: "googleFonts",
           title: "Abril Fatface",
           header: "Playfair Display",
@@ -186,7 +186,7 @@ describe("QuartzFonts", () => {
 
     it("deduplicates title and header when they match", () => {
       const head = getAdditionalHead(
-        QuartzFonts({
+        Fonts({
           fontOrigin: "googleFonts",
           title: "Inter",
           header: "Inter",
@@ -204,7 +204,7 @@ describe("QuartzFonts", () => {
   describe("selfHosted fontOrigin", () => {
     it("injects link to self-hosted CSS file instead of Google Fonts", () => {
       const head = getAdditionalHead(
-        QuartzFonts({
+        Fonts({
           fontOrigin: "selfHosted",
           body: "Inter",
           header: "Playfair Display",
@@ -220,7 +220,7 @@ describe("QuartzFonts", () => {
 
     it("still emits layered CSS with font variables", () => {
       const css = getCSSContent(
-        QuartzFonts({
+        Fonts({
           fontOrigin: "selfHosted",
           body: "Inter",
           header: "Playfair Display",
@@ -247,7 +247,7 @@ describe("QuartzFonts", () => {
     });
 
     it("reads theme fonts from registry", () => {
-      const css = getCSSContent(QuartzFonts());
+      const css = getCSSContent(Fonts());
 
       expect(css).toContain('--bodyFont: "JetBrains Mono", monospace');
       expect(css).toContain('--codeFont: "Fira Code", monospace');
@@ -255,14 +255,14 @@ describe("QuartzFonts", () => {
     });
 
     it("user options override theme fonts", () => {
-      const css = getCSSContent(QuartzFonts({ body: '"Inter", sans-serif' }));
+      const css = getCSSContent(Fonts({ body: '"Inter", sans-serif' }));
 
       expect(css).toContain('--bodyFont: "Inter", sans-serif');
       expect(css).toContain('--codeFont: "Fira Code", monospace');
     });
 
     it("useThemeFonts: false ignores registry", () => {
-      const css = getCSSContent(QuartzFonts({ useThemeFonts: false }));
+      const css = getCSSContent(Fonts({ useThemeFonts: false }));
 
       expect(css).toContain("--bodyFont: Source Sans Pro");
       expect(css).not.toContain("JetBrains Mono");
@@ -271,12 +271,12 @@ describe("QuartzFonts", () => {
 
   describe("plugin metadata", () => {
     it("has the correct name", () => {
-      const plugin = QuartzFonts();
-      expect(plugin.name).toBe("QuartzFonts");
+      const plugin = Fonts();
+      expect(plugin.name).toBe("Fonts");
     });
 
     it("textTransform passes through source unchanged", () => {
-      const plugin = QuartzFonts();
+      const plugin = Fonts();
       const input = "# Hello World\n";
       const result = plugin.textTransform!(mockCtx, input);
       expect(result).toBe(input);
