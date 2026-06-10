@@ -96,7 +96,7 @@
     "defaultEnabled": true,
     "defaultOptions": {
       "useThemeFonts": true,
-      "fontOrigin": "local"
+      "fontOrigin": "googleFonts"
     },
     "optionSchema": {
       "title": {

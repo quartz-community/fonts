@@ -135,9 +135,12 @@ function validateFontSpec(role, spec, fontRole) {
 }
 
 // src/transformer.ts
+var QUARTZ_DEFAULT_HEADER = "Schibsted Grotesk";
+var QUARTZ_DEFAULT_BODY = "Source Sans Pro";
+var QUARTZ_DEFAULT_CODE = "IBM Plex Mono";
 var defaultOptions = {
   useThemeFonts: true,
-  fontOrigin: "local"
+  fontOrigin: "googleFonts"
 };
 function toFontFamily(spec) {
   if (typeof spec === "string") return spec;
@@ -160,9 +163,24 @@ function resolveFonts(options) {
     }
     return OBSIDIAN_SANS_STACK;
   };
-  const body = resolve(options.body, themeFonts["--font-text"], OBSIDIAN_SANS_STACK);
-  const header = resolve(options.header, themeFonts["--font-text"], OBSIDIAN_SANS_STACK);
-  const code = resolve(options.code, themeFonts["--font-monospace"], OBSIDIAN_MONO_STACK);
+  const body = resolve(
+    options.body,
+    themeFonts["--font-text"],
+    QUARTZ_DEFAULT_BODY,
+    OBSIDIAN_SANS_STACK
+  );
+  const header = resolve(
+    options.header,
+    themeFonts["--font-text"],
+    QUARTZ_DEFAULT_HEADER,
+    OBSIDIAN_SANS_STACK
+  );
+  const code = resolve(
+    options.code,
+    themeFonts["--font-monospace"],
+    QUARTZ_DEFAULT_CODE,
+    OBSIDIAN_MONO_STACK
+  );
   const interfaceFont = resolve(
     options.interface,
     themeFonts["--font-interface"],
@@ -243,9 +261,9 @@ function buildUnlayeredCSS(fonts) {
   ].join("\n");
 }
 function buildGoogleFontsHead(options) {
-  const headerSpec = options.header ?? "Inter";
-  const bodySpec = options.body ?? "Inter";
-  const codeSpec = options.code ?? "JetBrains Mono";
+  const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER;
+  const bodySpec = options.body ?? QUARTZ_DEFAULT_BODY;
+  const codeSpec = options.code ?? QUARTZ_DEFAULT_CODE;
   const href = googleFontHref({
     title: options.title,
     header: headerSpec,

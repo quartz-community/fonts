@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import type { BuildCtx } from "@quartz-community/types";
 import { QuartzFonts } from "../src/transformer";
-import { OBSIDIAN_SANS_STACK, OBSIDIAN_MONO_STACK } from "../src/defaults";
+
 import { formatFontSpecification, googleFontHref, getFontName } from "../src/util/google-fonts";
 import { validateFontSpec } from "../src/util/validate";
 
@@ -32,12 +32,12 @@ describe("QuartzFonts", () => {
   });
 
   describe("standalone (no QuartzTheme)", () => {
-    it("uses Obsidian defaults when no options provided", () => {
+    it("uses Quartz defaults when no options provided", () => {
       const css = getCSSContent(QuartzFonts());
 
-      expect(css).toContain(`--bodyFont: ${OBSIDIAN_SANS_STACK}`);
-      expect(css).toContain(`--codeFont: ${OBSIDIAN_MONO_STACK}`);
-      expect(css).toContain(`--headerFont: ${OBSIDIAN_SANS_STACK}`);
+      expect(css).toContain("--bodyFont: Source Sans Pro");
+      expect(css).toContain("--codeFont: IBM Plex Mono");
+      expect(css).toContain("--headerFont: Schibsted Grotesk");
     });
 
     it("applies user-provided body font", () => {
@@ -87,9 +87,9 @@ describe("QuartzFonts", () => {
       expect(css).toContain('--titleFont: "Lora", serif');
     });
 
-    it("defaults title to Obsidian sans stack when no header set", () => {
+    it("defaults title to header default when no header set", () => {
       const css = getCSSContent(QuartzFonts());
-      expect(css).toContain(`--titleFont: ${OBSIDIAN_SANS_STACK}`);
+      expect(css).toContain("--titleFont: Schibsted Grotesk");
     });
 
     it("applies explicit title font", () => {
@@ -135,8 +135,8 @@ describe("QuartzFonts", () => {
   });
 
   describe("Google Fonts loading", () => {
-    it("does not inject link tags when fontOrigin is local (default)", () => {
-      const head = getAdditionalHead(QuartzFonts({ body: "Inter" }));
+    it("does not inject link tags when fontOrigin is local", () => {
+      const head = getAdditionalHead(QuartzFonts({ fontOrigin: "local", body: "Inter" }));
       expect(head).toHaveLength(0);
     });
 
@@ -223,7 +223,7 @@ describe("QuartzFonts", () => {
     it("useThemeFonts: false ignores registry", () => {
       const css = getCSSContent(QuartzFonts({ useThemeFonts: false }));
 
-      expect(css).toContain(`--bodyFont: ${OBSIDIAN_SANS_STACK}`);
+      expect(css).toContain("--bodyFont: Source Sans Pro");
       expect(css).not.toContain("JetBrains Mono");
     });
   });

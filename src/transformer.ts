@@ -5,9 +5,13 @@ import { readFontRegistry, isQuartzThemeEnabled } from "./util/registry";
 import { googleFontHref } from "./util/google-fonts";
 import { validateFontSpec } from "./util/validate";
 
+const QUARTZ_DEFAULT_HEADER = "Schibsted Grotesk";
+const QUARTZ_DEFAULT_BODY = "Source Sans Pro";
+const QUARTZ_DEFAULT_CODE = "IBM Plex Mono";
+
 const defaultOptions: QuartzFontsOptions = {
   useThemeFonts: true,
-  fontOrigin: "local",
+  fontOrigin: "googleFonts",
 };
 
 function toFontFamily(spec: FontSpecification): string {
@@ -55,9 +59,24 @@ function resolveFonts(options: QuartzFontsOptions): ResolvedFonts {
     return OBSIDIAN_SANS_STACK;
   };
 
-  const body = resolve(options.body, themeFonts["--font-text"], OBSIDIAN_SANS_STACK);
-  const header = resolve(options.header, themeFonts["--font-text"], OBSIDIAN_SANS_STACK);
-  const code = resolve(options.code, themeFonts["--font-monospace"], OBSIDIAN_MONO_STACK);
+  const body = resolve(
+    options.body,
+    themeFonts["--font-text"],
+    QUARTZ_DEFAULT_BODY,
+    OBSIDIAN_SANS_STACK,
+  );
+  const header = resolve(
+    options.header,
+    themeFonts["--font-text"],
+    QUARTZ_DEFAULT_HEADER,
+    OBSIDIAN_SANS_STACK,
+  );
+  const code = resolve(
+    options.code,
+    themeFonts["--font-monospace"],
+    QUARTZ_DEFAULT_CODE,
+    OBSIDIAN_MONO_STACK,
+  );
   const interfaceFont = resolve(
     options.interface,
     themeFonts["--font-interface"],
@@ -152,9 +171,9 @@ function buildUnlayeredCSS(fonts: ResolvedFonts): string {
 }
 
 function buildGoogleFontsHead(options: QuartzFontsOptions): string[] {
-  const headerSpec = options.header ?? "Inter";
-  const bodySpec = options.body ?? "Inter";
-  const codeSpec = options.code ?? "JetBrains Mono";
+  const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER;
+  const bodySpec = options.body ?? QUARTZ_DEFAULT_BODY;
+  const codeSpec = options.code ?? QUARTZ_DEFAULT_CODE;
 
   const href = googleFontHref({
     title: options.title,
