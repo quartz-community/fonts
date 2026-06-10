@@ -88,7 +88,10 @@
   "quartz": {
     "name": "quartz-fonts",
     "displayName": "Quartz Fonts",
-    "category": "transformer",
+    "category": [
+      "transformer",
+      "emitter"
+    ],
     "version": "1.0.0",
     "quartzVersion": ">=5.0.0",
     "dependencies": [],
@@ -403,7 +406,8 @@
         "type": "string",
         "enum": [
           "googleFonts",
-          "local"
+          "local",
+          "selfHosted"
         ]
       }
     }

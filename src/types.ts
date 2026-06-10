@@ -36,9 +36,21 @@ export interface QuartzFontsOptions {
    * Where to load fonts from.
    * - `"googleFonts"`: generate Google Fonts `<link>` tags.
    * - `"local"`: assume fonts are available locally (no loading).
+   * - `"selfHosted"`: download Google Fonts and serve from the build output.
    * Defaults to `"local"` (no automatic font loading).
    */
-  fontOrigin?: "googleFonts" | "local";
+  fontOrigin?: "googleFonts" | "local" | "selfHosted";
+}
+
+export interface ProcessedFontResult {
+  processedStylesheet: string;
+  fontFiles: GoogleFontFile[];
+}
+
+export interface GoogleFontFile {
+  url: string;
+  filename: string;
+  extension: string;
 }
 
 export interface QuartzFontRegistry {

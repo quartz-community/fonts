@@ -3,6 +3,7 @@ import type { BuildCtx } from "@quartz-community/types";
 import { QuartzFonts } from "../src/transformer";
 
 import { formatFontSpecification, googleFontHref, getFontName } from "../src/util/google-fonts";
+import { processGoogleFonts } from "../src/util/process-fonts";
 import { validateFontSpec } from "../src/util/validate";
 
 const REGISTRY_KEY = "__quartzFonts";
@@ -200,6 +201,39 @@ describe("QuartzFonts", () => {
     });
   });
 
+  describe("selfHosted fontOrigin", () => {
+    it("injects link to self-hosted CSS file instead of Google Fonts", () => {
+      const head = getAdditionalHead(
+        QuartzFonts({
+          fontOrigin: "selfHosted",
+          body: "Inter",
+          header: "Playfair Display",
+          code: "JetBrains Mono",
+        }),
+      );
+
+      expect(head).toHaveLength(1);
+      const link = head[0] as { props: Record<string, string> };
+      expect(link.props.rel).toBe("stylesheet");
+      expect(link.props.href).toBe("/static/fonts/quartz-fonts.css");
+    });
+
+    it("still emits layered CSS with font variables", () => {
+      const css = getCSSContent(
+        QuartzFonts({
+          fontOrigin: "selfHosted",
+          body: "Inter",
+          header: "Playfair Display",
+          code: "JetBrains Mono",
+        }),
+      );
+
+      expect(css).toContain("--bodyFont: Inter");
+      expect(css).toContain("--headerFont: Playfair Display");
+      expect(css).toContain("--codeFont: JetBrains Mono");
+    });
+  });
+
   describe("with QuartzTheme registry", () => {
     beforeEach(() => {
       setRegistry({
@@ -378,5 +412,46 @@ describe("validateFontSpec", () => {
   it("returns empty array when metadata is not available", () => {
     const warnings = validateFontSpec("body", "Inter", "body");
     expect(Array.isArray(warnings)).toBe(true);
+  });
+});
+
+describe("processGoogleFonts", () => {
+  it("rewrites font URLs to self-hosted paths", () => {
+    const css = `
+@font-face {
+  font-family: 'Inter';
+  src: url(https://fonts.gstatic.com/s/inter/v18/abc123def456.woff2) format('woff2');
+}`;
+    const { processedStylesheet, fontFiles } = processGoogleFonts(css, "example.com");
+
+    expect(processedStylesheet).toContain("https://example.com/static/fonts/abc123def456.woff2");
+    expect(processedStylesheet).not.toContain("fonts.gstatic.com");
+    expect(fontFiles).toHaveLength(1);
+    const [first] = fontFiles;
+    expect(first).toBeDefined();
+    if (!first) {
+      throw new Error("Expected at least one font file");
+    }
+    expect(first.filename).toBe("abc123def456");
+    expect(first.extension).toBe("woff2");
+  });
+
+  it("handles multiple font faces", () => {
+    const css = `
+@font-face {
+  font-family: 'Inter';
+  src: url(https://fonts.gstatic.com/s/inter/v18/abc123.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  src: url(https://fonts.gstatic.com/s/inter/v18/def456.woff) format('woff');
+}`;
+    const { fontFiles } = processGoogleFonts(css, "example.com");
+    expect(fontFiles).toHaveLength(2);
+  });
+
+  it("returns empty fontFiles for CSS without font URLs", () => {
+    const { fontFiles } = processGoogleFonts("body { color: red; }", "example.com");
+    expect(fontFiles).toHaveLength(0);
   });
 });

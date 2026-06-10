@@ -1,4 +1,6 @@
 import { createRequire } from 'module';
+import fs from 'fs';
+import path from 'path';
 
 const require$1 = createRequire(import.meta.url);
 var __require = /* @__PURE__ */ ((x2) => typeof require$1 !== "undefined" ? require$1 : typeof Proxy !== "undefined" ? new Proxy(x2, {
@@ -316,12 +318,97 @@ var QuartzFonts = (userOptions) => {
         { content: buildLayeredCSS(fonts), inline: true },
         { content: buildUnlayeredCSS(fonts), inline: true }
       ];
-      const additionalHead = options.fontOrigin === "googleFonts" ? buildGoogleFontsHead(options) : [];
+      let additionalHead = [];
+      if (options.fontOrigin === "googleFonts") {
+        additionalHead = buildGoogleFontsHead(options);
+      } else if (options.fontOrigin === "selfHosted") {
+        additionalHead = [_("link", { rel: "stylesheet", href: "/static/fonts/quartz-fonts.css" })];
+      }
       return { css, js: [], additionalHead };
     }
   };
 };
 
-export { QuartzFonts };
+// src/util/process-fonts.ts
+var fontMimeMap = {
+  truetype: "ttf",
+  woff: "woff",
+  woff2: "woff2",
+  opentype: "otf"
+};
+var fontUrlPattern = /url\((https:\/\/fonts.gstatic.com\/.+(?:\/|(?:kit=))(.+?)[.&].+?)\)\sformat\('(\w+?)'\);/g;
+function processGoogleFonts(stylesheet, baseUrl) {
+  const fontFiles = [];
+  const processedStylesheet = stylesheet.replace(
+    fontUrlPattern,
+    (match, url, filename, format) => {
+      const extension = fontMimeMap[format] ?? format;
+      const rewrittenUrl = `https://${baseUrl}/static/fonts/${filename}.${extension}`;
+      fontFiles.push({ url, filename, extension });
+      return match.replace(url, rewrittenUrl);
+    }
+  );
+  return { processedStylesheet, fontFiles };
+}
+
+// src/emitter.ts
+var QUARTZ_DEFAULT_HEADER2 = "Schibsted Grotesk";
+var QUARTZ_DEFAULT_BODY2 = "Source Sans Pro";
+var QUARTZ_DEFAULT_CODE2 = "IBM Plex Mono";
+var defaultOptions2 = {
+  useThemeFonts: true,
+  fontOrigin: "googleFonts"
+};
+var QuartzFontsEmitter = (userOptions) => {
+  const options = { ...defaultOptions2, ...userOptions };
+  return {
+    name: "QuartzFontsEmitter",
+    async *emit(ctx, _content, _resources) {
+      if (options.fontOrigin !== "selfHosted") {
+        return;
+      }
+      const baseUrl = ctx.cfg.configuration.baseUrl;
+      if (!baseUrl) {
+        throw new Error("[QuartzFontsEmitter] baseUrl is required for selfHosted fonts.");
+      }
+      const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER2;
+      const bodySpec = options.body ?? QUARTZ_DEFAULT_BODY2;
+      const codeSpec = options.code ?? QUARTZ_DEFAULT_CODE2;
+      const href = googleFontHref({
+        title: options.title,
+        header: headerSpec,
+        body: bodySpec,
+        code: codeSpec
+      });
+      const cssResponse = await fetch(href);
+      if (!cssResponse.ok) {
+        throw new Error(
+          `[QuartzFontsEmitter] Failed to fetch Google Fonts CSS: ${cssResponse.status} ${cssResponse.statusText}`
+        );
+      }
+      const cssText = await cssResponse.text();
+      const { processedStylesheet, fontFiles } = processGoogleFonts(cssText, baseUrl);
+      const fontsDir = path.join(ctx.argv.output, "static", "fonts");
+      await fs.promises.mkdir(fontsDir, { recursive: true });
+      for (const fontFile of fontFiles) {
+        const fontResponse = await fetch(fontFile.url);
+        if (!fontResponse.ok) {
+          throw new Error(
+            `[QuartzFontsEmitter] Failed to fetch font file: ${fontFile.url} (${fontResponse.status} ${fontResponse.statusText})`
+          );
+        }
+        const buf = await fontResponse.arrayBuffer();
+        const filePath = path.join(fontsDir, `${fontFile.filename}.${fontFile.extension}`);
+        await fs.promises.writeFile(filePath, Buffer.from(buf));
+        yield filePath;
+      }
+      const cssPath = path.join(fontsDir, "quartz-fonts.css");
+      await fs.promises.writeFile(cssPath, processedStylesheet);
+      yield cssPath;
+    }
+  };
+};
+
+export { QuartzFonts, QuartzFontsEmitter };
 //# sourceMappingURL=index.js.map
 //# sourceMappingURL=index.js.map

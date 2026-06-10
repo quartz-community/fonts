@@ -212,8 +212,12 @@ export const QuartzFonts: QuartzTransformerPlugin<Partial<QuartzFontsOptions>> =
         { content: buildUnlayeredCSS(fonts), inline: true },
       ];
 
-      const additionalHead: unknown[] =
-        options.fontOrigin === "googleFonts" ? buildGoogleFontsHead(options) : [];
+      let additionalHead: unknown[] = [];
+      if (options.fontOrigin === "googleFonts") {
+        additionalHead = buildGoogleFontsHead(options);
+      } else if (options.fontOrigin === "selfHosted") {
+        additionalHead = [h("link", { rel: "stylesheet", href: "/static/fonts/quartz-fonts.css" })];
+      }
 
       return { css, js: [], additionalHead };
     },
