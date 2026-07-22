@@ -85,6 +85,10 @@ const SINGLETON_EXTERNALS = [
   "vfile/*",
   "unified",
   "google-font-metadata",
+  "playwright",
+  "playwright/*",
+  "playwright-core",
+  "playwright-core/*",
 ];
 
 export default defineConfig({
@@ -103,7 +107,7 @@ export default defineConfig({
   splitting: false,
   outDir: "dist",
   platform: "node",
-  noExternal: [/.*/],
+  noExternal: [/^(?!playwright|playwright-core|chromium-bidi).*/],
   external: SINGLETON_EXTERNALS,
   banner: {
     js: 'import { createRequire } from "module"; const require = createRequire(import.meta.url);',
