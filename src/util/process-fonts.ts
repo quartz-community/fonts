@@ -10,14 +10,19 @@ const fontMimeMap: Record<string, string> = {
 const fontUrlPattern =
   /url\((https:\/\/fonts.gstatic.com\/.+(?:\/|(?:kit=))(.+?)[.&].+?)\)\sformat\('(\w+?)'\);/g;
 
-export function processGoogleFonts(stylesheet: string, baseUrl: string): ProcessedFontResult {
+/**
+ * Rewrites Google Fonts URLs to local files. Font files are written next to the
+ * stylesheet (`static/fonts/`), so the rewritten URLs are relative to it and work
+ * regardless of host or base path (jackyzha0/quartz#2547).
+ */
+export function processGoogleFonts(stylesheet: string): ProcessedFontResult {
   const fontFiles: GoogleFontFile[] = [];
 
   const processedStylesheet = stylesheet.replace(
     fontUrlPattern,
     (match, url: string, filename: string, format: string) => {
       const extension = fontMimeMap[format] ?? format;
-      const rewrittenUrl = `https://${baseUrl}/static/fonts/${filename}.${extension}`;
+      const rewrittenUrl = `${filename}.${extension}`;
       fontFiles.push({ url, filename, extension });
       return match.replace(url, rewrittenUrl);
     },
