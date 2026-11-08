@@ -5,10 +5,18 @@ import { OBSIDIAN_SANS_STACK, OBSIDIAN_MONO_STACK } from "./defaults";
 import { readFontRegistry, isQuartzThemeEnabled } from "./util/registry";
 import { googleFontHref } from "./util/google-fonts";
 import { validateFontSpec } from "./util/validate";
+import { pathToRoot } from "@quartz-community/utils";
+import type { FullSlug } from "@quartz-community/types";
+import {
+  QUARTZ_DEFAULT_BODY,
+  QUARTZ_DEFAULT_CODE,
+  QUARTZ_DEFAULT_HEADER,
+  readConfiguredTypography,
+  resolveFontSpecs,
+} from "./util/typography";
+import type { ConfiguredTypography } from "./util/typography";
 
-const QUARTZ_DEFAULT_HEADER = "Schibsted Grotesk";
-const QUARTZ_DEFAULT_BODY = "Source Sans Pro";
-const QUARTZ_DEFAULT_CODE = "IBM Plex Mono";
+export const SELF_HOSTED_STYLESHEET = "static/fonts/quartz-fonts.css";
 
 const defaultOptions: FontsOptions = {
   useThemeFonts: true,
@@ -34,7 +42,7 @@ interface ResolvedFonts {
   h6: string;
 }
 
-function resolveFonts(options: FontsOptions): ResolvedFonts {
+function resolveFonts(options: FontsOptions, typography: ConfiguredTypography): ResolvedFonts {
   const registry = options.useThemeFonts !== false ? readFontRegistry() : undefined;
 
   if (options.useThemeFonts !== false && !registry) {
@@ -63,18 +71,21 @@ function resolveFonts(options: FontsOptions): ResolvedFonts {
   const body = resolve(
     options.body,
     themeFonts["--font-text"],
+    typography.body && toFontFamily(typography.body),
     QUARTZ_DEFAULT_BODY,
     OBSIDIAN_SANS_STACK,
   );
   const header = resolve(
     options.header,
     themeFonts["--font-text"],
+    typography.header && toFontFamily(typography.header),
     QUARTZ_DEFAULT_HEADER,
     OBSIDIAN_SANS_STACK,
   );
   const code = resolve(
     options.code,
     themeFonts["--font-monospace"],
+    typography.code && toFontFamily(typography.code),
     QUARTZ_DEFAULT_CODE,
     OBSIDIAN_MONO_STACK,
   );
@@ -83,7 +94,7 @@ function resolveFonts(options: FontsOptions): ResolvedFonts {
     themeFonts["--font-interface"],
     OBSIDIAN_SANS_STACK,
   );
-  const title = resolve(options.title, undefined, header);
+  const title = resolve(options.title, typography.title && toFontFamily(typography.title), header);
 
   const resolveHeading = (level: 1 | 2 | 3 | 4 | 5 | 6): string => {
     const levelKey = `h${level}` as keyof FontsOptions;
@@ -171,17 +182,8 @@ function buildUnlayeredCSS(fonts: ResolvedFonts): string {
   ].join("\n");
 }
 
-function buildGoogleFontsHead(options: FontsOptions): unknown[] {
-  const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER;
-  const bodySpec = options.body ?? QUARTZ_DEFAULT_BODY;
-  const codeSpec = options.code ?? QUARTZ_DEFAULT_CODE;
-
-  const href = googleFontHref({
-    title: options.title,
-    header: headerSpec,
-    body: bodySpec,
-    code: codeSpec,
-  });
+function buildGoogleFontsHead(options: FontsOptions, typography: ConfiguredTypography): unknown[] {
+  const href = googleFontHref(resolveFontSpecs(options, typography));
 
   return [
     h("link", { rel: "preconnect", href: "https://fonts.googleapis.com" }),
@@ -204,8 +206,9 @@ export const Fonts: QuartzTransformerPlugin<Partial<FontsOptions>> = (
     textTransform(_ctx, src) {
       return src;
     },
-    externalResources(_ctx) {
-      const fonts = resolveFonts(options);
+    externalResources(ctx) {
+      const typography = readConfiguredTypography(ctx);
+      const fonts = resolveFonts(options, typography);
 
       const css: CSSResource[] = [
         { content: buildLayeredCSS(fonts), inline: true },
@@ -214,9 +217,16 @@ export const Fonts: QuartzTransformerPlugin<Partial<FontsOptions>> = (
 
       let additionalHead: unknown[] = [];
       if (options.fontOrigin === "googleFonts") {
-        additionalHead = buildGoogleFontsHead(options);
+        additionalHead = buildGoogleFontsHead(options, typography);
       } else if (options.fontOrigin === "selfHosted") {
-        additionalHead = [h("link", { rel: "stylesheet", href: "/static/fonts/quartz-fonts.css" })];
+        // Relative to the page so it works on localhost and under a base path (jackyzha0/quartz#2547).
+        additionalHead = [
+          (fileData: { slug?: string }) =>
+            h("link", {
+              rel: "stylesheet",
+              href: `${pathToRoot((fileData?.slug ?? "index") as FullSlug)}/${SELF_HOSTED_STYLESHEET}`,
+            }),
+        ];
       }
 
       return { css, js: [], additionalHead };

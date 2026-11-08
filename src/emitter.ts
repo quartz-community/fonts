@@ -4,10 +4,7 @@ import type { QuartzEmitterPlugin, BuildCtx, FilePath } from "@quartz-community/
 import type { FontsOptions } from "./types";
 import { googleFontHref } from "./util/google-fonts";
 import { processGoogleFonts } from "./util/process-fonts";
-
-const QUARTZ_DEFAULT_HEADER = "Schibsted Grotesk";
-const QUARTZ_DEFAULT_BODY = "Source Sans Pro";
-const QUARTZ_DEFAULT_CODE = "IBM Plex Mono";
+import { readConfiguredTypography, resolveFontSpecs } from "./util/typography";
 
 const defaultOptions: FontsOptions = {
   useThemeFonts: true,
@@ -26,21 +23,7 @@ export const FontsEmitter: QuartzEmitterPlugin<Partial<FontsOptions>> = (
         return;
       }
 
-      const baseUrl = ctx.cfg.configuration.baseUrl;
-      if (!baseUrl) {
-        throw new Error("[FontsEmitter] baseUrl is required for selfHosted fonts.");
-      }
-
-      const headerSpec = options.header ?? QUARTZ_DEFAULT_HEADER;
-      const bodySpec = options.body ?? QUARTZ_DEFAULT_BODY;
-      const codeSpec = options.code ?? QUARTZ_DEFAULT_CODE;
-
-      const href = googleFontHref({
-        title: options.title,
-        header: headerSpec,
-        body: bodySpec,
-        code: codeSpec,
-      });
+      const href = googleFontHref(resolveFontSpecs(options, readConfiguredTypography(ctx)));
 
       const cssResponse = await fetch(href);
       if (!cssResponse.ok) {
@@ -50,7 +33,7 @@ export const FontsEmitter: QuartzEmitterPlugin<Partial<FontsOptions>> = (
       }
       const cssText = await cssResponse.text();
 
-      const { processedStylesheet, fontFiles } = processGoogleFonts(cssText, baseUrl);
+      const { processedStylesheet, fontFiles } = processGoogleFonts(cssText);
 
       const fontsDir = path.join(ctx.argv.output, "static", "fonts");
       await fs.promises.mkdir(fontsDir, { recursive: true });

@@ -201,6 +201,47 @@ describe("Fonts", () => {
     });
   });
 
+  describe("configuration.theme.typography (jackyzha0/quartz#2507)", () => {
+    const typographyCtx = {
+      cfg: {
+        configuration: {
+          theme: {
+            typography: {
+              header: "Lora",
+              body: { name: "Lora", weights: [400, 700] },
+              code: "Fira Code",
+            },
+          },
+        },
+      },
+    } as unknown as BuildCtx;
+
+    it("uses configured typography when no font options are given", () => {
+      const resources = Fonts().externalResources!(typographyCtx);
+      const css = (resources?.css ?? []).map((r) => ("content" in r ? r.content : "")).join("\n");
+      expect(css).toContain("--headerFont: Lora");
+      expect(css).toContain("--bodyFont: Lora");
+      expect(css).toContain("--codeFont: Fira Code");
+      expect(css).toContain("h2 { font-family: Lora; }");
+      expect(css).not.toContain("Schibsted Grotesk");
+    });
+
+    it("requests configured typography from Google Fonts", () => {
+      const resources = Fonts().externalResources!(typographyCtx) as { additionalHead: unknown[] };
+      const stylesheet = resources.additionalHead[2] as { props: { href: string } };
+      expect(stylesheet.props.href).toContain("family=Lora");
+      expect(stylesheet.props.href).toContain("family=Fira%20Code");
+      expect(stylesheet.props.href).not.toContain("Schibsted");
+    });
+
+    it("plugin options still take precedence over configured typography", () => {
+      const resources = Fonts({ body: "Inter" }).externalResources!(typographyCtx);
+      const css = (resources?.css ?? []).map((r) => ("content" in r ? r.content : "")).join("\n");
+      expect(css).toContain("--bodyFont: Inter");
+      expect(css).toContain("--headerFont: Lora");
+    });
+  });
+
   describe("selfHosted fontOrigin", () => {
     it("injects link to self-hosted CSS file instead of Google Fonts", () => {
       const head = getAdditionalHead(
@@ -213,9 +254,23 @@ describe("Fonts", () => {
       );
 
       expect(head).toHaveLength(1);
-      const link = head[0] as { props: Record<string, string> };
+      const render = head[0] as (fileData: { slug?: string }) => {
+        props: Record<string, string>;
+      };
+      expect(typeof render).toBe("function");
+      const link = render({ slug: "index" });
       expect(link.props.rel).toBe("stylesheet");
-      expect(link.props.href).toBe("/static/fonts/quartz-fonts.css");
+      expect(link.props.href).toBe("./static/fonts/quartz-fonts.css");
+    });
+
+    it("links the self-hosted CSS relative to the page (base paths, nested pages)", () => {
+      const [render] = getAdditionalHead(Fonts({ fontOrigin: "selfHosted" })) as Array<
+        (fileData: { slug?: string }) => { props: Record<string, string> }
+      >;
+      expect(render!({ slug: "notes/deep/page" }).props.href).toBe(
+        "../../static/fonts/quartz-fonts.css",
+      );
+      expect(render!({ slug: "tags/index" }).props.href).toBe("../static/fonts/quartz-fonts.css");
     });
 
     it("still emits layered CSS with font variables", () => {
@@ -422,9 +477,10 @@ describe("processGoogleFonts", () => {
   font-family: 'Inter';
   src: url(https://fonts.gstatic.com/s/inter/v18/abc123def456.woff2) format('woff2');
 }`;
-    const { processedStylesheet, fontFiles } = processGoogleFonts(css, "example.com");
+    const { processedStylesheet, fontFiles } = processGoogleFonts(css);
 
-    expect(processedStylesheet).toContain("https://example.com/static/fonts/abc123def456.woff2");
+    expect(processedStylesheet).toContain("url(abc123def456.woff2) format('woff2')");
+    expect(processedStylesheet).not.toContain("https://");
     expect(processedStylesheet).not.toContain("fonts.gstatic.com");
     expect(fontFiles).toHaveLength(1);
     const [first] = fontFiles;
@@ -446,12 +502,32 @@ describe("processGoogleFonts", () => {
   font-family: 'Inter';
   src: url(https://fonts.gstatic.com/s/inter/v18/def456.woff) format('woff');
 }`;
-    const { fontFiles } = processGoogleFonts(css, "example.com");
+    const { fontFiles } = processGoogleFonts(css);
     expect(fontFiles).toHaveLength(2);
   });
 
+  it("rewrites to URLs relative to the stylesheet (no host, no absolute path)", () => {
+    const css = `
+@font-face {
+  font-family: 'Inter';
+  src: url(https://fonts.gstatic.com/s/inter/v18/abc123.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  src: url(https://fonts.gstatic.com/l/font?kit=xyz789&skey=1&v=2) format('truetype');
+}`;
+    const { processedStylesheet, fontFiles } = processGoogleFonts(css);
+    expect(processedStylesheet).toContain("url(abc123.woff2)");
+    expect(processedStylesheet).toContain("url(xyz789.ttf)");
+    expect(processedStylesheet).not.toMatch(/url\((https?:|\/)/);
+    expect(fontFiles.map((f) => f.url)).toEqual([
+      "https://fonts.gstatic.com/s/inter/v18/abc123.woff2",
+      "https://fonts.gstatic.com/l/font?kit=xyz789&skey=1&v=2",
+    ]);
+  });
+
   it("returns empty fontFiles for CSS without font URLs", () => {
-    const { fontFiles } = processGoogleFonts("body { color: red; }", "example.com");
+    const { fontFiles } = processGoogleFonts("body { color: red; }");
     expect(fontFiles).toHaveLength(0);
   });
 });
