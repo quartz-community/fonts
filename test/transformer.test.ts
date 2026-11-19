@@ -82,6 +82,33 @@ describe("Fonts", () => {
     });
   });
 
+  describe("with a QuartzTheme registry", () => {
+    const unlayered = (plugin: ReturnType<typeof Fonts>) =>
+      (plugin.externalResources!(mockCtx)?.css ?? [])
+        .map((r) => ("content" in r ? r.content : ""))
+        .find((c) => c.includes("font-family:") && !c.includes("@layer"));
+
+    beforeEach(() => setRegistry({ themeName: "Minimal", fonts: { "--font-text": '"Inter"' } }));
+    afterEach(() => clearRegistry());
+
+    it("leaves heading fonts to the theme's CSS", () => {
+      expect(unlayered(Fonts({}))).toBeUndefined();
+    });
+
+    it("leaves Obsidian's font variables to the theme", () => {
+      const css = getCSSContent(Fonts({}));
+      expect(css).toContain("--bodyFont:");
+      expect(css).not.toContain("--h1-font:");
+      expect(css).not.toContain("--font-text:");
+    });
+
+    it("still forces headings the user configured", () => {
+      const css = unlayered(Fonts({ h2: '"Lora", serif' }));
+      expect(css).toContain('h2 { font-family: "Lora", serif; }');
+      expect(css).not.toContain("h1 {");
+    });
+  });
+
   describe("title font", () => {
     it("defaults title to header value", () => {
       const css = getCSSContent(Fonts({ header: '"Lora", serif' }));
@@ -306,7 +333,8 @@ describe("Fonts", () => {
 
       expect(css).toContain('--bodyFont: "JetBrains Mono", monospace');
       expect(css).toContain('--codeFont: "Fira Code", monospace');
-      expect(css).toContain('--h1-font: "Custom H1 Font", serif');
+      // The theme's CSS sets --h1-font itself; Fonts must not override it.
+      expect(css).not.toContain("--h1-font:");
     });
 
     it("user options override theme fonts", () => {

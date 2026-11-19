@@ -16,6 +16,8 @@ import {
 } from "./util/typography";
 import type { ConfiguredTypography } from "./util/typography";
 
+const HEADING_LEVELS = ["h1", "h2", "h3", "h4", "h5", "h6"] as const;
+
 export const SELF_HOSTED_STYLESHEET = "static/fonts/quartz-fonts.css";
 
 const defaultOptions: FontsOptions = {
@@ -149,7 +151,29 @@ function runValidation(options: FontsOptions): void {
   }
 }
 
-function buildLayeredCSS(fonts: ResolvedFonts): string {
+/**
+ * Quartz's font variables, plus Obsidian's (--font-text, --hN-font, …). With
+ * QuartzTheme active the theme's CSS owns Obsidian's variables — setting them on
+ * :root would leak into the theme through `--h1-font: inherit` and friends — so
+ * they are only emitted for roles the user configured explicitly.
+ */
+export function buildLayeredCSS(
+  fonts: ResolvedFonts,
+  options: Partial<FontsOptions> = {},
+  themeActive = false,
+): string {
+  const obsidianVars: [string, string, keyof FontsOptions | undefined][] = [
+    ["--font-text", fonts.body, "body"],
+    ["--font-interface", fonts.interface, "interface"],
+    ["--font-monospace", fonts.code, "code"],
+    ...HEADING_LEVELS.map(
+      (level) => [`--${level}-font`, fonts[level], level] as [string, string, keyof FontsOptions],
+    ),
+  ];
+  const explicit = (key: keyof FontsOptions | undefined) =>
+    key !== undefined &&
+    (options[key] !== undefined ||
+      (key.startsWith("h") && key.length === 2 && options.header !== undefined));
   return [
     "@layer quartz-fonts {",
     "  :root {",
@@ -157,29 +181,29 @@ function buildLayeredCSS(fonts: ResolvedFonts): string {
     `    --bodyFont: ${fonts.body};`,
     `    --headerFont: ${fonts.header};`,
     `    --codeFont: ${fonts.code};`,
-    `    --font-text: ${fonts.body};`,
-    `    --font-interface: ${fonts.interface};`,
-    `    --font-monospace: ${fonts.code};`,
-    `    --h1-font: ${fonts.h1};`,
-    `    --h2-font: ${fonts.h2};`,
-    `    --h3-font: ${fonts.h3};`,
-    `    --h4-font: ${fonts.h4};`,
-    `    --h5-font: ${fonts.h5};`,
-    `    --h6-font: ${fonts.h6};`,
+    ...obsidianVars
+      .filter(([, , key]) => !themeActive || explicit(key))
+      .map(([name, value]) => `    ${name}: ${value};`),
     "  }",
     "}",
   ].join("\n");
 }
 
-function buildUnlayeredCSS(fonts: ResolvedFonts): string {
-  return [
-    `h1 { font-family: ${fonts.h1}; }`,
-    `h2 { font-family: ${fonts.h2}; }`,
-    `h3 { font-family: ${fonts.h3}; }`,
-    `h4 { font-family: ${fonts.h4}; }`,
-    `h5 { font-family: ${fonts.h5}; }`,
-    `h6 { font-family: ${fonts.h6}; }`,
-  ].join("\n");
+/**
+ * Unlayered heading fonts beat every layered stylesheet. Without a theme they
+ * apply the configured header font everywhere. With QuartzTheme (it registers
+ * its fonts), the theme's own CSS sets heading fonts (Obsidian's --hN-font
+ * chain), so only headings the user configured explicitly are forced.
+ */
+export function buildUnlayeredCSS(
+  fonts: ResolvedFonts,
+  options: Partial<FontsOptions> = {},
+  themeActive = false,
+): string {
+  const levels = themeActive
+    ? HEADING_LEVELS.filter((level) => options[level] !== undefined || options.header !== undefined)
+    : HEADING_LEVELS;
+  return levels.map((level) => `${level} { font-family: ${fonts[level]}; }`).join("\n");
 }
 
 function buildGoogleFontsHead(options: FontsOptions, typography: ConfiguredTypography): unknown[] {
@@ -210,10 +234,12 @@ export const Fonts: QuartzTransformerPlugin<Partial<FontsOptions>> = (
       const typography = readConfiguredTypography(ctx);
       const fonts = resolveFonts(options, typography);
 
+      const themeActive = options.useThemeFonts !== false && readFontRegistry() !== undefined;
+      const unlayered = buildUnlayeredCSS(fonts, options, themeActive);
       const css: CSSResource[] = [
-        { content: buildLayeredCSS(fonts), inline: true },
-        { content: buildUnlayeredCSS(fonts), inline: true },
+        { content: buildLayeredCSS(fonts, options, themeActive), inline: true },
       ];
+      if (unlayered) css.push({ content: unlayered, inline: true });
 
       let additionalHead: unknown[] = [];
       if (options.fontOrigin === "googleFonts") {
